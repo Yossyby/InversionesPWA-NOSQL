@@ -19,6 +19,166 @@ Implementar una plataforma web de inversiones asistida por IA con modelo semi-au
 **Constraints**: Control humano obligatorio (`FR-004`,`FR-005`,`FR-009`), no auto-trading (`FR-010`), retencion >=365 dias (`FR-007`), rate limiting con `429` (`FR-015`), optimistic locking (`FR-016`), MFA para trader/admin (`FR-019`)  
 **Scale/Scope**: v1 enfocado en acciones y opciones US, brokers IBKR+Alpaca, señales BUY/SELL/HOLD explicables
 
+## Plan Requirement IDs (PL)
+
+- **PL-001**: Toda restriccion constitucional debe mapearse a actividades verificables y evidencia de cierre.
+- **PL-002**: Las dependencias externas deben declarar SLO minimo, timeout, politica de reintento y modo degradado.
+- **PL-003**: Debe existir una particion explicita de datos por responsabilidad entre Supabase (operacional) y MongoDB (historico/contexto IA).
+- **PL-004**: La estructura del proyecto debe incluir ownership por raiz y limites entre codigo ejecutable y gobierno/documentacion.
+- **PL-005**: El rate limiting para acciones sensibles debe definir ventana, umbral, cooldown y respuesta uniforme.
+- **PL-006**: La trazabilidad operativa completa debe definir campos minimos obligatorios por evento.
+- **PL-007**: Todo criterio de exito (`SC-*`) debe mapearse a componente responsable y evidencia esperada.
+- **PL-008**: La estructura debe cumplir reglas minimas de conformidad de dos capas para evitar regresiones por cambios manuales.
+- **PL-009**: Los conflictos de concurrencia deben tener resultado deterministico y codigos de error estandar.
+- **PL-010**: Deben existir escenarios de degradacion por dependencia (broker, market data, IA) con continuidad operativa.
+- **PL-011**: Las metricas de frescura y observabilidad deben tener metodologia de medicion, etiquetas y periodicidad.
+- **PL-012**: El disclaimer de no-asesoria debe listarse por superficie UI/API donde aplica visualizacion y registro.
+
+## Matriz Restriccion -> Actividad -> Evidencia
+
+| Restriccion | Actividad verificable | Evidencia de cierre |
+|---|---|---|
+| `FR-004` / `FR-005` | Implementar guardas de aprobacion previa en backend y estado `PENDIENTE_APROBACION` en ciclo operativo | Contrato `signal-lifecycle.md` y pruebas de contrato de rechazo sin aprobacion |
+| `FR-009` | Aplicar politica fail-fast con transicion a `FALLIDA` y bloqueo de reintento sin nueva aprobacion | Registro de auditoria con evento `execution.failed` y regla de reintento validada |
+| `FR-010` | Limitar IA a recomendaciones, sin endpoint de ejecucion directa | Inventario de endpoints y evidencia de ausencia de ejecucion automatica |
+| `FR-013` | Mostrar y registrar disclaimer en puntos de decision/ejecucion | Evidencia de eventos `disclaimer.shown` y `disclaimer.acknowledged` |
+| `FR-015` | Enforzar rate limit por usuario+endpoint sensible con respuesta `429` uniforme | Dashboard de observabilidad de `429` y pruebas de limite por ventana |
+| `FR-016` | Enforzar optimistic locking por version de orden | Respuesta deterministica `409` en version obsoleta y auditoria de colision |
+| `FR-018` | Definir runbooks para RTO/RPO y pruebas de recuperacion | Evidencia de simulacros con cumplimiento de umbrales |
+
+## Dependencias Externas y SLO Minimos
+
+| Dependencia | Uso principal | SLO minimo | Timeout/reintento | Modo degradado |
+|---|---|---|---|---|
+| IBKR adapter | Ejecucion asistida y estado de orden | >= 99.5% disponibilidad mensual | Timeout 5s, 2 reintentos con backoff exponencial | Bloquear nuevas ejecuciones y mantener evaluacion/consulta historica |
+| Alpaca adapter | Ejecucion asistida y estado de orden | >= 99.5% disponibilidad mensual | Timeout 5s, 2 reintentos con backoff exponencial | Igual a IBKR, con fallback a cola manual de revision |
+| Market data provider | Cotizaciones para senales activas | p95 <= 1s en instrumentos activos | Timeout 2s, 1 reintento rapido | Congelar nueva senal y marcar `DATA_STALE` visible al usuario |
+| Claude API | Explicabilidad y enriquecimiento IA | >= 99.0% disponibilidad mensual | Timeout 8s, 1 reintento | Continuar con explicacion deterministica sin enriquecimiento IA |
+
+## Particion de Datos y Responsabilidad de Stores
+
+| Tipo de dato | Store primario | Retencion | Razon de diseno |
+|---|---|---|---|
+| Identidad, sesion, rol, MFA | Supabase | Ciclo de vida de cuenta + auditoria | Operacion transaccional y seguridad |
+| Senal, propuesta operativa, decision humana, estado de ejecucion | Supabase | >= 365 dias (`FR-007`) | Soporte operacional y consultas en linea |
+| Registro de auditoria operacional | Supabase | >= 365 dias (`FR-007`) | Trazabilidad legal y operativa |
+| Historicos analiticos de alto volumen | MongoDB (opcional) | Politica de analitica definida por negocio | Coste/escala para analitica no critica en tiempo real |
+| Contexto IA extendido / archivos de soporte | MongoDB (opcional) | Segun politica de cumplimiento | Separar archivo de contexto del camino transaccional |
+
+## Trazabilidad Operativa Completa (campos minimos)
+
+Para que una operacion se considere con "trazabilidad completa" (`SC-003`, `FR-006`, `FR-011`), cada evento debe registrar al menos:
+
+- `event_id` (UUID), `timestamp_utc`, `correlation_id`
+- `signal_id`, `proposal_id`, `order_id` (si aplica)
+- `user_id`, `role`, `mfa_context_id` (si aplica)
+- `action_type`, `previous_state`, `new_state`
+- `broker`, `instrument`, `order_type`, `quantity`, `price` (si aplica)
+- `outcome_code`, `error_code` (si aplica), `evidence_ref`
+
+## Matriz de Trazabilidad SC -> Componente Responsable
+
+| SC | Componente principal | Componente secundario | Evidencia esperada |
+|---|---|---|---|
+| `SC-001` | Backend `signals` | Frontend `signals` | Respuesta de senal con explicacion y evidencia enlazada |
+| `SC-002` | Backend `execution-governance` | Frontend `approval-flow` | 100% de ejecuciones con aprobacion humana previa |
+| `SC-003` | Backend `audit-history` | DB `supabase` | Consultas de historial <3s y campos de trazabilidad completos |
+| `SC-004` | Frontend `decision-flow` | Backend `signals` | Telemetria de finalizacion del flujo evaluar-revisar-decidir |
+| `SC-005` | Plataforma (SRE/ops) | Backend core services | Reporte mensual de disponibilidad >=99.5% |
+| `SC-006` | Backend `market-data` | Observabilidad | Metricas p95 de frescura por instrumento activo |
+| `SC-007` | Plataforma (ops) | Backups/restore | Evidencia de simulacros RTO/RPO en umbral |
+| `SC-008` | Backend `auth-context` | Frontend `approval-flow` | Eventos de MFA validos en aprobacion y ejecucion |
+
+## Matriz de Trazabilidad FR/SC/PL por Tarea Implementada
+
+| Tarea | Artefacto principal | FR/SC cubiertos | PL cubiertos |
+|---|---|---|---|
+| T026 | `backend/src/modules/execution/approvalService.ts` | `FR-004`,`FR-005`,`FR-019` | `PL-001`,`PL-006` |
+| T027 | `backend/src/modules/execution/executionService.ts` | `FR-004`,`FR-005`,`FR-009` | `PL-001`,`PL-010` |
+| T028 | `backend/src/modules/brokers/brokerAdapter.ts` | `FR-008`,`FR-014` | `PL-002` |
+| T029 | `backend/src/modules/brokers/ibkrAdapter.ts` | `FR-008` | `PL-002`,`PL-010` |
+| T030 | `backend/src/modules/brokers/alpacaAdapter.ts` | `FR-008` | `PL-002`,`PL-010` |
+| T031 | `backend/src/routes/execution/approve.ts` | `FR-013`,`FR-019` | `PL-012`,`PL-006` |
+| T032 | `backend/src/routes/execution/execute.ts` | `FR-015`,`FR-016` | `PL-005`,`PL-009` |
+| T033 | `backend/src/modules/execution/failureRecovery.ts` | `FR-009` | `PL-010` |
+| T034 | `frontend/src/features/execution/ApprovalFlow.tsx` | `FR-004`,`FR-013` | `PL-012` |
+| T035 | `frontend/src/features/execution/ExecutionPanel.tsx` | `FR-015`,`FR-016` | `PL-005`,`PL-009` |
+| T036 | `backend/src/modules/execution/executionAudit.ts` | `FR-006`,`SC-002` | `PL-006` |
+| T037 | `backend/src/modules/audit/historyService.ts` | `FR-011`,`SC-003` | `PL-006` |
+| T038 | `backend/src/modules/analytics/portfolioService.ts` | `FR-011` | `PL-007` |
+| T039 | `backend/src/routes/audit/history.ts` | `FR-011`,`SC-003` | `PL-006` |
+| T040 | `backend/src/routes/audit/operationDetail.ts` | `FR-009`,`FR-011` | `PL-006`,`PL-010` |
+| T041 | `frontend/src/features/audit/AuditHistoryPage.tsx` | `SC-003`,`FR-011` | `PL-007` |
+| T042 | `frontend/src/features/audit/OperationTimeline.tsx` | `FR-011` | `PL-006` |
+| T043 | `backend/src/observability/historyMetrics.ts` | `SC-003` | `PL-011` |
+| T044 | `specs/001-plataforma-inversiones-ia/contracts/broker-adapter.md` | `FR-015`,`FR-016` | `PL-009` |
+| T045 | `specs/001-plataforma-inversiones-ia/contracts/signal-lifecycle.md` | `FR-006`,`FR-013` | `PL-006` |
+| T046 | `specs/001-plataforma-inversiones-ia/contracts/auth-context.md` | `FR-019`,`SC-008` | `PL-001` |
+| T047 | `specs/001-plataforma-inversiones-ia/plan.md` | `SC-002`,`SC-003`,`SC-008` | `PL-001`,`PL-007` |
+| T048 | `specs/001-plataforma-inversiones-ia/quickstart.md` | `FR-018`,`SC-005`,`SC-007` | `PL-008` |
+
+## Criterios de Conformidad Estructural (No-regresion)
+
+La estructura se considera conforme si cumple simultaneamente:
+
+1. Existe separacion de codigo ejecutable entre `frontend/` y `backend/`.
+2. Existe carpeta `specs/` para artefactos de feature y contratos.
+3. La carpeta `.drfic/` se usa para gobierno, conocimiento y metodologia; no para runtime de producto.
+4. Existe separacion clara entre codigo de producto (`frontend/`, `backend/`) y artefactos de soporte (`tests/`, `specs/`, `.drfic/`).
+5. Todo cambio manual de estructura actualiza este plan y su mapa de ownership.
+
+## Ownership y Proposito por Raiz
+
+| Raiz | Ownership | Proposito |
+|---|---|---|
+| `frontend/` | Equipo Frontend | Experiencia PWA, decision flow, visualizacion de senales |
+| `backend/` | Equipo Backend | API REST, gobernanza de ejecucion, integraciones broker |
+| `specs/` | Producto + Arquitectura | Spec, plan, contratos, data model y checklists |
+| `.drfic/` | Arquitectura/Gobernanza | Conocimiento, constitucion, lineamientos y trazabilidad metodologica |
+
+## Politica de Rate Limiting Operacional
+
+Para endpoints sensibles (`approve`, `execute`, `retry-execution`, `cancel-order`):
+
+- Ventana: 60 segundos
+- Umbral: 10 solicitudes por `user_id + endpoint`
+- Cooldown: 120 segundos tras superar umbral
+- Respuesta uniforme: `429` con payload `{ code: "RATE_LIMITED", retryAfterSeconds: 120 }`
+- Observabilidad: metricas por endpoint, usuario anonimizado y tasa de bloqueos
+
+## Concurrencia y Resolucion Deterministica
+
+- Modelo: optimistic locking con `order_version` (`FR-016`).
+- Si la version recibida no coincide con la version persistida, la accion se rechaza con `409 CONFLICT` y `error_code=ORDER_VERSION_STALE`.
+- No se aplican side-effects parciales en conflicto de version.
+- El cliente debe refrescar estado y solicitar nueva accion humana cuando aplique.
+
+## Recuperacion y Modos Degradados por Dependencia
+
+| Escenario | Comportamiento esperado | Continuidad |
+|---|---|---|
+| Caida IBKR o Alpaca | No ejecutar ordenes nuevas en broker afectado; registrar incidencia y mantener aprobaciones pendientes | Continuar analisis, historial y auditoria |
+| Latencia o caida de market data | Marcar instrumentos con `DATA_STALE`; pausar nuevas senales para instrumentos afectados | Continuar consultas historicas y gestion no dependiente de tick realtime |
+| Caida de IA (Claude API) | Usar explicacion fallback basada en reglas y evidencia de cores | Mantener flujo de evaluacion sin bloqueo total |
+
+## Observabilidad y Frescura de Datos
+
+- Medicion de frescura (`SC-006`): `now_utc - market_tick_timestamp_utc` por instrumento activo.
+- Segmentacion minima: por proveedor de datos, tipo de instrumento y sesion de mercado.
+- Agregacion: p50/p95/p99 cada 1 minuto; reporte consolidado cada 15 minutos.
+- Alertas: disparar alerta operativa si p95 > 1s por 3 ventanas consecutivas.
+- Metrica de cobertura: porcentaje de instrumentos activos con metrica valida por ventana.
+
+## Superficies Obligatorias para Disclaimer No-Asesoria
+
+El disclaimer debe mostrarse y registrarse en:
+
+1. Vista de detalle de senal antes de "aprobar".
+2. Modal/pantalla de aprobacion operativa.
+3. Confirmacion previa a envio de orden al broker.
+4. Endpoint backend de aprobacion (registro server-side de aceptacion).
+5. Endpoint backend de ejecucion (registro server-side de contexto de cumplimiento).
+
 ## Constitution Check
 
 *GATE: Debe pasar antes de Phase 0 research. Revalidar despues de Phase 1 design.*
@@ -348,93 +508,49 @@ C:.
 
 ### Estructura de codigo (repo)
 
-│
-├── packages/                    # Librerías compartidas (design system, utils, etc.)
-│   ├── ui-library/              # Librería interna de componentes UI
-│   │   ├── src/
-│   │   ├── package.json
-│   │   └── tsconfig.json
-│   ├── utils/                   # Funciones utilitarias compartidas
-│   │   ├── src/
-│   │   ├── package.json
-│   │   └── tsconfig.json
-│   └── types/                   # Tipos globales compartidos
-│       ├── src/
-│       ├── package.json
-│       └── tsconfig.json
-|
-└── projects/                       # Proyectos organizados por categoría
-    ├── pwa/                        # Proyectos PWA
-    │   ├── inversions_app/         # Proyecto: Plataforma de Inversiones IA
-    │   │   ├── public/
-    │   │   ├── data/               # Contratos/modelos de referencia por base de datos
-    │   │   │   ├── supabase/
-    │   │   │   │   ├── models/
-    │   │   │   │   ├── schema/
-    │   │   │   │   └── data/
-    │   │   │   ├── mongodb/
-    │   │   │   │   ├── models/
-    │   │   │   │   ├── schema/
-    │   │   │   │   └── data/
-    │   │   │   └── ...
-    │   │   ├── src/                 # Código ejecutable de la PWA
-    │   │   │   ├── assets/          # Recursos estáticos (imágenes, fuentes, estilos globales)
-    │   │   │   ├── components/      # Componentes reutilizables
-    │   │   │   │   └── ui/          # Atomic design: atoms, molecules, organisms
-    │   │   │   ├── features/        # Módulos funcionales
-    │   │   │   │   ├── dashboard/           # Dashboard principal
-    │   │   │   │   ├── market-scanner/      # Escáner de mercado
-    │   │   │   │   ├── options-chain/       # Cadena de opciones
-    │   │   │   │   ├── signals/             # Motor de señales
-    │   │   │   │   ├── portfolio/           # Gestión de portafolio
-    │   │   │   │   ├── broker-connect/      # Conexión con brokers
-    │   │   │   │   ├── backtesting/         # Backtesting de estrategias
-    │   │   │   │   └── alerts/              # Sistema de alertas
-    │   │   │   ├── hooks/           # Hooks globales
-    │   │   │   ├── layouts/         # Layouts generales
-    │   │   │   ├── pages/           # Páginas principales
-    │   │   │   ├── routes/          # Configuración de rutas
-    │   │   │   ├── services/        # Servicios externos
-    │   │   │   │   ├── broker/                # Integración con brokers (IBKR, etc.)
-    │   │   │   │   ├── market-data/           # Feeds de datos (TradingView, etc.)
-    │   │   │   │   ├── indicators/            # Motor de indicadores técnicos
-    │   │   │   │   ├── technical-analysis/    # Análisis Tecnico (datos para graficar soportes, resistencias y tendencias)
-    │   │   │   │   ├── fundamental-analysis/  # Análisis Fundamental (datos financieros de los instrumentos/empresas)
-    │   │   │   │   └── ai-analysis/            # Análisis con IA (Claude API)
-    │   │   │   │   └── institutional-analysis/ # Análisis de las inversiones de los Institucionales
-    │   │   │   │   └── news/                   # Servicio de noticias financieras
-    │   │   │   │   └── strategies/             # Motor de estrategias de trading
-    │   │   │   ├── store/           # Estado global (Zustand/Redux)
-    │   │   │   ├── styles/          # Estilos globales
-    │   │   │   ├── utils/           # Funciones utilitarias
-    │   │   │   ├── types/           # Tipos globales
-    │   │   │   ├── App.tsx          # Componente raíz
-    │   │   │   ├── main.tsx         # Punto de entrada
-    │   │   │   └── vite-env.d.ts    # Tipos generados por Vite
-    │   │   ├── tests/               # Pruebas unitarias e integración
-    │   │   │   └── e2e/             # Pruebas end-to-end
-    │   │   ├── index.html
-    │   │   ├── package.json
-    │   │   ├── tsconfig.json
-    │   │   └── vite.config.ts
-    │
-    └── api/                             # Proyectos backend / APIs REST
-      └── rest_api_inversions_drfic/     # Persistencia real y exposición de endpoints
-        ├── src/
-        │   ├── routes/
-        │   ├── controllers/
-        │   ├── services/
-        │   ├── models/
-        │   ├── migrations/
-        │   └── config/
-        ├── DATABASE_CONFIG.yaml
-        ├── .env.example
-        ├── package.json
-        └── tsconfig.json
+```text
+frontend/
+├── public/
+├── src/
+│   ├── assets/
+│   ├── components/
+│   ├── features/
+│   ├── hooks/
+│   ├── layouts/
+│   ├── pages/
+│   ├── routes/
+│   ├── services/
+│   ├── store/
+│   ├── styles/
+│   ├── types/
+│   ├── utils/
+│   ├── App.tsx
+│   └── main.tsx
+├── tests/
+│   └── e2e/
+├── index.html
+├── package.json
+└── tsconfig.json
+
+backend/
+├── src/
+│   ├── config/
+│   ├── controllers/
+│   ├── domain/
+│   ├── jobs/
+│   ├── middleware/
+│   ├── modules/
+│   ├── observability/
+│   └── routes/
+├── .env.example
+├── package.json
+└── tsconfig.json
+
+tests/
+└── integration/
 ```
 
-
-**Structure Decision**: Se mantiene arquitectura web de dos capas (`frontend` + `backend`) con carpeta `tests` transversal, alineada al stack constitucional y a la separacion de responsabilidades del proyecto.
+**Decision de Estructura**: La estructura oficial de implementacion para esta feature es de dos capas (`frontend/` + `backend/`) con `tests/` transversal. Cualquier reorganizacion futura distinta a este esquema requiere actualizar primero este plan y sus tareas derivadas.
 
 ## Phase 0: Outline y Research
 

@@ -49,3 +49,11 @@
 
 - Marcar cada item como `[x]` cuando quede resuelto en los artefactos fuente.
 - Estado inicial `OK/Pendiente` refleja una lectura documental preliminar y debe confirmarse en revision formal.
+
+## Ownership Checklist (PL-004)
+
+- [x] OWN001 Existe ownership explicito para `frontend/` (equipo frontend) en artefactos de plan.
+- [x] OWN002 Existe ownership explicito para `backend/` (equipo backend) en artefactos de plan.
+- [x] OWN003 Existe ownership explicito para `specs/` (producto + arquitectura) en artefactos de plan.
+- [x] OWN004 Existe ownership explicito para `.drfic/` (arquitectura/gobernanza) en artefactos de plan.
+- [x] OWN005 Se mantiene separacion entre codigo de producto y artefactos de gobierno/documentacion.

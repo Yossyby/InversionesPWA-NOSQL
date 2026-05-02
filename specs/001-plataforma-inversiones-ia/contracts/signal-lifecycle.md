@@ -24,6 +24,33 @@ Definir ciclo de vida compartido entre evidencia analitica, senal, propuesta ope
 - Se aplica optimistic locking por version de propuesta (`FR-016`).
 - Evidencia y auditoria se retienen al menos 365 dias (`FR-007`).
 
+## Campos Obligatorios de Traza por Evento
+
+Todo evento del ciclo debe registrar al menos:
+
+- `event_id`
+- `timestamp_utc`
+- `correlation_id`
+- `signal_id`
+- `proposal_id`
+- `user_id`
+- `role`
+- `action_type`
+- `previous_state`
+- `new_state`
+
+Campos condicionales (cuando aplique):
+
+- `broker`
+- `instrument`
+- `order_type`
+- `quantity`
+- `price`
+- `outcome_code`
+- `error_code`
+- `mfa_context_id`
+- `evidence_ref`
+
 ## Eventos Auditables Minimos
 
 - `SIGNAL_GENERATED`
@@ -35,3 +62,12 @@ Definir ciclo de vida compartido entre evidencia analitica, senal, propuesta ope
 - `EXECUTION_FILLED`
 - `EXECUTION_CANCELLED`
 - `DISCLAIMER_ACKNOWLEDGED`
+
+## Eventos de Disclaimer Obligatorios
+
+- `DISCLAIMER_SHOWN`: cuando la UI muestra el disclaimer previo a aprobacion/ejecucion.
+- `DISCLAIMER_ACKNOWLEDGED`: cuando el usuario confirma explicitamente el disclaimer.
+
+Regla contractual:
+
+- No se permite `HUMAN_APPROVED` sin evidencia previa de `DISCLAIMER_ACKNOWLEDGED` para la misma `proposal_id`/`correlation_id`.

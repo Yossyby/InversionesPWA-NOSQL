@@ -11,6 +11,22 @@ Definir contrato de autenticacion y autorizacion para endpoints protegidos de la
 - El rol efectivo se deriva de claims + contexto persistido del usuario.
 - Para aprobacion/ejecucion de roles `trader` y `admin` se exige evidencia MFA valida.
 
+## Evidencia MFA Requerida (trader/admin)
+
+Para acciones sensibles (`approve`, `execute`, `retry-execution`) con rol `trader` o `admin`, la evidencia MFA minima debe incluir:
+
+- `mfa_context_id`
+- `mfa_method` (`totp|sms|hardware_key`)
+- `mfa_verified_at` (timestamp UTC)
+- `mfa_expires_at` (timestamp UTC)
+- `mfa_verification_result` (`success|failed`)
+
+Reglas:
+
+- Si `mfa_verification_result != success`, la accion se rechaza con `403 AUTH_CONTEXT_MFA_REQUIRED`.
+- Si `mfa_expires_at < now`, la accion se rechaza con `403 AUTH_CONTEXT_MFA_REQUIRED`.
+- `viewer` no puede aprobar/ejecutar aun con MFA valido.
+
 ## Authorization Contract (RBAC)
 
 - `viewer`: solo lectura de senales, evidencia e historial.
@@ -33,3 +49,5 @@ Definir contrato de autenticacion y autorizacion para endpoints protegidos de la
 - Ninguna accion operativa sensible se ejecuta sin usuario autenticado activo.
 - Aprobacion/ejecucion quedan auditadas con `user_id`, `role`, `mfa_session_id`, `timestamp`.
 - No se aceptan headers de identidad del cliente como fuente autoritativa.
+- Toda aprobacion/ejecucion de `trader|admin` debe tener evidencia MFA persistida y correlacionable por `mfa_context_id`.
+- La cobertura objetivo de evidencia MFA en acciones sensibles es 100% (`SC-008`).

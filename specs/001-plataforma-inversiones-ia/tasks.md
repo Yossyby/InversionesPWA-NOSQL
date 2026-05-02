@@ -1,4 +1,4 @@
-# Tasks: Plataforma de Inversiones con IA
+# Tareas: Plataforma de Inversiones con IA
 
 **Entrada**: Artefactos de diseno desde `/specs/001-plataforma-inversiones-ia/`
 **Prerequisitos**: `plan.md` (obligatorio), `spec.md` (obligatorio), `research.md`, `data-model.md`, `contracts/`
@@ -7,13 +7,13 @@
 
 **Organizacion**: Las tareas se agrupan por historia de usuario para implementacion y validacion independientes.
 
-## Formato: `[ID] [P?] [Story] Descripcion`
+## Formato: `[ID] [P?] [Historia] Descripcion`
 
 - **[P]**: Tarea paralelizable (archivos distintos, sin dependencia pendiente)
-- **[Story]**: Mapeo a historia de usuario (`US1`, `US2`, `US3`)
+- **[Historia]**: Mapeo a historia de usuario (`US1`, `US2`, `US3`)
 - Incluir rutas de archivo exactas en cada tarea
 
-## Fase 1: Setup (Infraestructura Compartida)
+## Fase 1: Preparacion (Infraestructura Compartida)
 
 **Proposito**: Preparar estructura base y convenciones de trabajo para frontend/backend/tests.
 
@@ -25,7 +25,7 @@
 
 ---
 
-## Fase 2: Foundational (Prerequisitos Bloqueantes)
+## Fase 2: Fundacional (Prerequisitos Bloqueantes)
 
 **Proposito**: Cimientos obligatorios para todas las historias (auth, gobernanza, auditoria, contratos, observabilidad).
 
@@ -77,17 +77,17 @@
 
 ### Implementacion para User Story 2
 
-- [ ] T026 [P] [US2] Implementar servicio de aprobacion/rechazo con validacion MFA en backend/src/modules/execution/approvalService.ts (FR-004, FR-005, FR-019)
-- [ ] T027 [P] [US2] Implementar orquestador de ejecucion asistida forzando transiciones solo aprobadas en backend/src/modules/execution/executionService.ts (FR-004, FR-005, FR-009)
-- [ ] T028 [P] [US2] Implementar interfaces de adaptador broker y normalizacion de estados en backend/src/modules/brokers/brokerAdapter.ts (FR-008, FR-014, PL-002)
-- [ ] T029 [P] [US2] Implementar adaptador IBKR con idempotencia y mapeo de errores en backend/src/modules/brokers/ibkrAdapter.ts (FR-008, PL-002)
-- [ ] T030 [P] [US2] Implementar adaptador Alpaca con idempotencia y mapeo de errores en backend/src/modules/brokers/alpacaAdapter.ts (FR-008, PL-002)
-- [ ] T031 [US2] Implementar endpoint de aprobacion con captura de disclaimer y evidencia MFA en backend/src/routes/execution/approve.ts (FR-013, FR-019, PL-012)
-- [ ] T032 [US2] Implementar endpoint de ejecucion con rate limit y optimistic locking en backend/src/routes/execution/execute.ts (FR-015, FR-016, PL-005, PL-009)
-- [ ] T033 [US2] Implementar transicion de intento fallido hacia PENDING_APPROVAL en backend/src/modules/execution/failureRecovery.ts (FR-009, PL-010)
-- [ ] T034 [P] [US2] Implementar flujo UI frontend de aprobacion con confirmacion de disclaimer en frontend/src/features/execution/ApprovalFlow.tsx (FR-004, FR-013)
-- [ ] T035 [P] [US2] Implementar panel frontend de ejecucion con manejo de conflicto y cooldown en frontend/src/features/execution/ExecutionPanel.tsx (FR-015, FR-016)
-- [ ] T036 [US2] Emitir eventos de auditoria HUMAN_APPROVED, EXECUTION_SUBMITTED y EXECUTION_FAILED en backend/src/modules/execution/executionAudit.ts (FR-006, SC-002, PL-006)
+- [x] T026 [P] [US2] Implementar servicio de aprobacion/rechazo con validacion MFA en backend/src/modules/execution/approvalService.ts (FR-004, FR-005, FR-019)
+- [x] T027 [P] [US2] Implementar orquestador de ejecucion asistida forzando transiciones solo aprobadas en backend/src/modules/execution/executionService.ts (FR-004, FR-005, FR-009)
+- [x] T028 [P] [US2] Implementar interfaces de adaptador broker y normalizacion de estados en backend/src/modules/brokers/brokerAdapter.ts (FR-008, FR-014, PL-002)
+- [x] T029 [P] [US2] Implementar adaptador IBKR con idempotencia y mapeo de errores en backend/src/modules/brokers/ibkrAdapter.ts (FR-008, PL-002)
+- [x] T030 [P] [US2] Implementar adaptador Alpaca con idempotencia y mapeo de errores en backend/src/modules/brokers/alpacaAdapter.ts (FR-008, PL-002)
+- [x] T031 [US2] Implementar endpoint de aprobacion con captura de disclaimer y evidencia MFA en backend/src/routes/execution/approve.ts (FR-013, FR-019, PL-012)
+- [x] T032 [US2] Implementar endpoint de ejecucion con rate limit y optimistic locking en backend/src/routes/execution/execute.ts (FR-015, FR-016, PL-005, PL-009)
+- [x] T033 [US2] Implementar transicion de intento fallido hacia PENDING_APPROVAL en backend/src/modules/execution/failureRecovery.ts (FR-009, PL-010)
+- [x] T034 [P] [US2] Implementar flujo UI frontend de aprobacion con confirmacion de disclaimer en frontend/src/features/execution/ApprovalFlow.tsx (FR-004, FR-013)
+- [x] T035 [P] [US2] Implementar panel frontend de ejecucion con manejo de conflicto y cooldown en frontend/src/features/execution/ExecutionPanel.tsx (FR-015, FR-016)
+- [x] T036 [US2] Emitir eventos de auditoria HUMAN_APPROVED, EXECUTION_SUBMITTED y EXECUTION_FAILED en backend/src/modules/execution/executionAudit.ts (FR-006, SC-002, PL-006)
 
 **Checkpoint**: US2 funcional e independientemente validable.
 
@@ -101,37 +101,37 @@
 
 ### Implementacion para User Story 3
 
-- [ ] T037 [P] [US3] Implementar servicio de consulta de historial de auditoria con filtros de correlacion en backend/src/modules/audit/historyService.ts (FR-011, PL-006)
-- [ ] T038 [P] [US3] Implementar agregacion de analitica de portafolio para resultados auditables en backend/src/modules/analytics/portfolioService.ts (FR-011, PL-007)
-- [ ] T039 [US3] Implementar endpoint API de historial con paginacion y metadata de completitud de traza en backend/src/routes/audit/history.ts (FR-011, SC-003)
-- [ ] T040 [US3] Implementar endpoint API de detalle operativo para diagnostico de fallos en backend/src/routes/audit/operationDetail.ts (FR-009, FR-011)
-- [ ] T041 [P] [US3] Implementar dashboard frontend de historial de auditoria con filtros e indicadores de latencia en frontend/src/features/audit/AuditHistoryPage.tsx (SC-003)
-- [ ] T042 [P] [US3] Implementar vista frontend de timeline operativo para eventos de decision y ejecucion en frontend/src/features/audit/OperationTimeline.tsx (FR-011, PL-006)
-- [ ] T043 [US3] Implementar instrumentacion de metricas de servicio para latencia y completitud de historial en backend/src/observability/historyMetrics.ts (SC-003, PL-011)
+- [x] T037 [P] [US3] Implementar servicio de consulta de historial de auditoria con filtros de correlacion en backend/src/modules/audit/historyService.ts (FR-011, PL-006)
+- [x] T038 [P] [US3] Implementar agregacion de analitica de portafolio para resultados auditables en backend/src/modules/analytics/portfolioService.ts (FR-011, PL-007)
+- [x] T039 [US3] Implementar endpoint API de historial con paginacion y metadata de completitud de traza en backend/src/routes/audit/history.ts (FR-011, SC-003)
+- [x] T040 [US3] Implementar endpoint API de detalle operativo para diagnostico de fallos en backend/src/routes/audit/operationDetail.ts (FR-009, FR-011)
+- [x] T041 [P] [US3] Implementar dashboard frontend de historial de auditoria con filtros e indicadores de latencia en frontend/src/features/audit/AuditHistoryPage.tsx (SC-003)
+- [x] T042 [P] [US3] Implementar vista frontend de timeline operativo para eventos de decision y ejecucion en frontend/src/features/audit/OperationTimeline.tsx (FR-011, PL-006)
+- [x] T043 [US3] Implementar instrumentacion de metricas de servicio para latencia y completitud de historial en backend/src/observability/historyMetrics.ts (SC-003, PL-011)
 
 **Checkpoint**: US3 funcional e independientemente validable.
 
 ---
 
-## Fase 6: Polish & Cross-Cutting Concerns
+## Fase 6: Cierre y Aspectos Transversales
 
 **Proposito**: Cerrar trazabilidad documental FR/SC/PL, hardening operativo y validacion final.
 
-- [ ] T044 [P] Actualizar contrato broker con 409 ORDER_VERSION_STALE y payload 429 de cooldown en specs/001-plataforma-inversiones-ia/contracts/broker-adapter.md (FR-015, FR-016, PL-009)
-- [ ] T045 [P] Actualizar contrato de ciclo de vida con campos de traza obligatorios y eventos de disclaimer en specs/001-plataforma-inversiones-ia/contracts/signal-lifecycle.md (FR-006, FR-013, PL-006)
-- [ ] T046 [P] Actualizar contrato de auth con invariantes de evidencia MFA para trader/admin en specs/001-plataforma-inversiones-ia/contracts/auth-context.md (FR-019, SC-008)
-- [ ] T047 Agregar matriz de trazabilidad FR/SC/PL por tarea implementada en specs/001-plataforma-inversiones-ia/plan.md (PL-001, PL-007)
-- [ ] T048 Ejecutar validacion de quickstart y documentar evidencia en specs/001-plataforma-inversiones-ia/quickstart.md (PL-008)
-- [ ] T049 [P] Definir SLI/SLO de disponibilidad mensual y tablero de evidencias en backend/src/observability/availabilitySlo.ts (SC-005, PL-011)
-- [ ] T050 Implementar job de consolidacion mensual de disponibilidad y export de reporte en backend/src/jobs/monthlyAvailabilityReport.ts (SC-005)
-- [ ] T051 [P] Definir runbook de simulacro de recuperacion RTO/RPO en specs/001-plataforma-inversiones-ia/quickstart.md (SC-007, FR-018)
-- [ ] T052 Ejecutar simulacro controlado y registrar evidencia de cumplimiento RTO/RPO en specs/001-plataforma-inversiones-ia/quickstart.md (SC-007)
-- [ ] T053 [P] Implementar verificador de cobertura MFA al 100% para acciones sensibles en backend/src/observability/mfaCoverageAudit.ts (SC-008, FR-019)
-- [ ] T054 Implementar reporte de cobertura MFA por rol y endpoint en backend/src/observability/mfaCoverageReport.ts (SC-008)
-- [ ] T055 [P] Crear checklist de ownership por raiz para cumplimiento estructural en specs/001-plataforma-inversiones-ia/checklists/plan-quality.md (PL-004)
-- [ ] T056 Implementar gate de no-regresion estructural en scripts/validate-structure.ps1 (PL-008)
-- [ ] T057 [P] Normalizar redaccion de artefactos operativos a espanol tecnico en specs/001-plataforma-inversiones-ia/tasks.md (Constitucion-Idioma)
-- [ ] T058 Implementar checklist de cumplimiento de comentarios `FIC:` bilingues en backend/src/config/ficCommentPolicy.ts (Constitucion-FIC)
+- [x] T044 [P] Actualizar contrato broker con 409 ORDER_VERSION_STALE y payload 429 de cooldown en specs/001-plataforma-inversiones-ia/contracts/broker-adapter.md (FR-015, FR-016, PL-009)
+- [x] T045 [P] Actualizar contrato de ciclo de vida con campos de traza obligatorios y eventos de disclaimer en specs/001-plataforma-inversiones-ia/contracts/signal-lifecycle.md (FR-006, FR-013, PL-006)
+- [x] T046 [P] Actualizar contrato de auth con invariantes de evidencia MFA para trader/admin en specs/001-plataforma-inversiones-ia/contracts/auth-context.md (FR-019, SC-008)
+- [x] T047 Agregar matriz de trazabilidad FR/SC/PL por tarea implementada en specs/001-plataforma-inversiones-ia/plan.md (PL-001, PL-007)
+- [x] T048 Ejecutar validacion de quickstart y documentar evidencia en specs/001-plataforma-inversiones-ia/quickstart.md (PL-008)
+- [x] T049 [P] Definir SLI/SLO de disponibilidad mensual y tablero de evidencias en backend/src/observability/availabilitySlo.ts (SC-005, PL-011)
+- [x] T050 Implementar job de consolidacion mensual de disponibilidad y export de reporte en backend/src/jobs/monthlyAvailabilityReport.ts (SC-005)
+- [x] T051 [P] Definir runbook de simulacro de recuperacion RTO/RPO en specs/001-plataforma-inversiones-ia/quickstart.md (SC-007, FR-018)
+- [x] T052 Ejecutar simulacro controlado y registrar evidencia de cumplimiento RTO/RPO en specs/001-plataforma-inversiones-ia/quickstart.md (SC-007)
+- [x] T053 [P] Implementar verificador de cobertura MFA al 100% para acciones sensibles en backend/src/observability/mfaCoverageAudit.ts (SC-008, FR-019)
+- [x] T054 Implementar reporte de cobertura MFA por rol y endpoint en backend/src/observability/mfaCoverageReport.ts (SC-008)
+- [x] T055 [P] Crear checklist de ownership por raiz para cumplimiento estructural en specs/001-plataforma-inversiones-ia/checklists/plan-quality.md (PL-004)
+- [x] T056 Implementar gate de no-regresion estructural en scripts/validate-structure.ps1 (PL-008)
+- [x] T057 [P] Normalizar redaccion de artefactos operativos a espanol tecnico en specs/001-plataforma-inversiones-ia/tasks.md (Constitucion-Idioma)
+- [x] T058 Implementar checklist de cumplimiento de comentarios `FIC:` bilingues en backend/src/config/ficCommentPolicy.ts (Constitucion-FIC)
 
 ---
 
@@ -170,12 +170,12 @@
 
 ## Oportunidades de Paralelismo
 
-- Setup: T002, T003, T004, T005 in parallel after T001.
-- Foundation: T007, T008, T010, T011, T013, T014, T015, T016 in parallel after T006/T009 prerequisites.
+- Preparacion: T002, T003, T004, T005 en paralelo tras T001.
+- Fundacional: T007, T008, T010, T011, T013, T014, T015, T016 en paralelo tras prerequisitos T006/T009.
 - US1: T017, T018, T019, T022, T023 in parallel; then T020/T021; then T024/T025.
 - US2: T026, T028, T029, T030, T034, T035 in parallel; then T031/T032; then T033/T036.
 - US3: T037, T038, T041, T042 in parallel; then T039/T040; then T043.
-- SLO/Resiliencia: T049/T051/T053/T055/T057 in parallel; luego T050/T052/T054/T056/T058.
+- SLO/Resiliencia: T049/T051/T053/T055/T057 en paralelo; luego T050/T052/T054/T056/T058.
 
 ## Ejemplo de Paralelismo: User Story 1
 
@@ -236,7 +236,7 @@ Task: "T043 [US3] history metrics"
 1. Complete Phase 1 and Phase 2.
 2. Complete Phase 3 (US1) fully.
 3. Validar la prueba independiente de US1.
-4. Demo/deploy MVP signal evaluation capability.
+4. Demostrar/desplegar capacidad MVP de evaluacion de senales.
 
 ### Entrega Incremental
 

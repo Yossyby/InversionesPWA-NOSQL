@@ -7,7 +7,8 @@
     "backend"
   ],
   "scripts": {
-    "lint": "npm run -w frontend lint && npm run -w backend lint",
+    "lint:fic": "node scripts/validate-fic-comments.mjs",
+    "lint": "npm run lint:fic && npm run -w frontend lint && npm run -w backend lint",
     "test": "npm run -w frontend test && npm run -w backend test"
   }
 }

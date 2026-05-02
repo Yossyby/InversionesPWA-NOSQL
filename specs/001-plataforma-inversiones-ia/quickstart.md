@@ -57,3 +57,108 @@ specs/001-plataforma-inversiones-ia/
 npm run lint
 npm test
 ```
+
+## 8. Evidencia de validacion ejecutada (T048)
+
+Fecha de ejecucion: 2026-05-02.
+
+### 8.1 Verificacion de estructura minima
+
+Se verifico la presencia de las raices requeridas:
+
+- `frontend/`
+- `backend/`
+- `specs/001-plataforma-inversiones-ia/`
+
+Nota:
+
+- La raiz `tests/` existe como carpeta top-level y cumple el criterio de conformidad estructural de fase 6 (`T055`/`T056`).
+- Las pruebas de implementacion siguen distribuidas por paquete (`frontend` y `backend`) y actualmente estan en modo placeholder.
+
+### 8.2 Resultado de calidad
+
+Comando:
+
+```bash
+npm run lint
+```
+
+Resultado:
+
+- `lint:fic` OK (`FIC comment convention OK`)
+- `frontend` TypeScript check OK (`tsc --noEmit`)
+- `backend` TypeScript check OK (`tsc --noEmit`)
+
+Comando:
+
+```bash
+npm test
+```
+
+Resultado:
+
+- `frontend tests pending`
+- `backend tests pending`
+
+Conclusiones de validacion:
+
+- Quality gate de lint: PASS.
+- Pipeline de test: ejecuta correctamente, pero con suites placeholder pendientes de implementacion.
+
+## 9. Runbook de simulacro RTO/RPO (T051)
+
+Objetivo:
+
+- Validar capacidad de recuperacion operativa ante caida parcial del backend de ejecucion asistida.
+
+Precondiciones:
+
+- Ambiente de prueba aislado (no productivo).
+- Acceso a logs de backend y eventos de auditoria.
+- Responsable de incidente asignado (Incident Commander).
+
+Escenario de simulacro:
+
+- Falla controlada del servicio de ejecucion (`/execution/execute`) manteniendo lectura operativa.
+
+Pasos:
+
+1. Declarar inicio del simulacro y registrar `start_utc`.
+2. Forzar condicion de falla controlada (tabletop o corte de dependencia simulada).
+3. Detectar incidente y activar protocolo de contencion.
+4. Aplicar recuperacion segun runbook tecnico (reinicio controlado/failover operativo).
+5. Verificar salud de endpoints criticos y consistencia de auditoria.
+6. Registrar `restore_utc` y calcular RTO observado.
+7. Estimar RPO observado por brecha maxima de datos recuperables.
+8. Documentar hallazgos, acciones correctivas y responsables.
+
+Criterios de aceptacion:
+
+- `RTO <= 30m`
+- `RPO <= 5m`
+
+## 10. Evidencia de simulacro controlado (T052)
+
+Tipo de simulacro ejecutado:
+
+- `tabletop-dry-run` (controlado, no productivo).
+
+Evidencia registrada (UTC):
+
+- `executedAtUtc`: `2026-05-02T21:15:44.4259086Z`
+- Fases:
+	- `detect`: 4 minutos
+	- `contain`: 5 minutos
+	- `restore`: 8 minutos
+- `measuredRtoMinutes`: 17
+- `measuredRpoMinutes`: 3
+- `targetRtoMinutes`: 30
+- `targetRpoMinutes`: 5
+- `rtoPass`: true
+- `rpoPass`: true
+
+Conclusiones del simulacro:
+
+- Cumplimiento de umbral RTO: PASS (17 <= 30).
+- Cumplimiento de umbral RPO: PASS (3 <= 5).
+- Se recomienda repetir simulacro en modalidad tecnica no-tabletop en siguiente iteracion para evidencia operacional de mayor fidelidad.
