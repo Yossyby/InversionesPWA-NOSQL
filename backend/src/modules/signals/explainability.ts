@@ -1,4 +1,4 @@
-import type { SourceVerdict } from "./confluenceEngine.js";
+import type { SourceVerdict } from "./confluenceEngine";
 
 export interface EvidenceItem {
   sourceId: string;

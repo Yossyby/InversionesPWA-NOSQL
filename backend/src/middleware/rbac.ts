@@ -1,5 +1,5 @@
 import type { NextFunction, Request, Response } from "express";
-import type { UserRole } from "./authContext.js";
+import type { UserRole } from "./authContext";
 
 export function requireRole(...roles: UserRole[]) {
   const allowed = new Set(roles);

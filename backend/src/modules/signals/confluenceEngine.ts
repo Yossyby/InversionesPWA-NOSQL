@@ -1,4 +1,4 @@
-import type { SourceConfig } from "./sourceConfig.js";
+import type { SourceConfig } from "./sourceConfig";
 
 export type SignalDirection = "BUY" | "SELL" | "HOLD";
 

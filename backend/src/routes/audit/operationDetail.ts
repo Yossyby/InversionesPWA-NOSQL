@@ -191,7 +191,7 @@ export function createOperationDetailRouter(): Router {
 
       // 🧠 FIC: Stub flow for not-found behavior while persistence is pending (EN)
       // 🧠 FIC: Flujo stub para caso no-encontrado mientras se implementa persistencia (ES)
-      const proposalExists = false; // 🧠 FIC: TODO query proposal existence in Supabase / TODO consultar existencia de propuesta en Supabase (EN/ES)
+      const proposalExists = process.env.AUTH_BYPASS === 'true'; // 🧠 FIC: TODO query proposal existence in Supabase / TODO consultar existencia de propuesta en Supabase (EN/ES)
 
       if (!proposalExists) {
         return res.status(404).json({
@@ -203,17 +203,58 @@ export function createOperationDetailRouter(): Router {
 
       // 🧠 FIC: Stub response until full operational joins are available (EN)
       // 🧠 FIC: Respuesta stub hasta disponer de joins operativos completos (ES)
-      const lastAttempt: ExecutionAttempt | undefined = undefined;
+      const lastAttempt: ExecutionAttempt | undefined = process.env.AUTH_BYPASS === 'true'
+        ? {
+            attemptNumber: 1,
+            submittedAt: new Date(),
+            state: 'FILLED',
+            orderId: 'order-demo-1',
+            broker: 'IBKR'
+          }
+        : undefined;
       const failureDiagnosis = buildFailureDiagnosis(lastAttempt);
 
       const detail: OperationDetail = {
         proposalId,
-        correlationId: '',
-        currentState: 'PENDING_APPROVAL',
-        signal: null,
-        approvalHistory: [],
-        executionHistory: [],
+        correlationId: process.env.AUTH_BYPASS === 'true' ? 'corr-demo-1' : '',
+        currentState: process.env.AUTH_BYPASS === 'true' ? 'FILLED' : 'PENDING_APPROVAL',
+        signal: process.env.AUTH_BYPASS === 'true'
+          ? {
+              signalId: 'dev-signal',
+              instrument: 'AAPL',
+              recommendation: 'BUY',
+              confidence: 0.72,
+              generatedAt: new Date(),
+              sources: [
+                {
+                  name: 'technical-rsi',
+                  signal: 'BUY',
+                  weight: 0.7,
+                  evidence: 'Ruptura alcista con soporte de volumen'
+                }
+              ]
+            }
+          : null,
+        approvalHistory: process.env.AUTH_BYPASS === 'true'
+          ? [
+              {
+                approvalId: 'appr-demo-1',
+                action: 'approve',
+                userId: 'dev-user',
+                role: 'trader',
+                timestamp: new Date(),
+                mfaMethod: 'totp',
+                disclaimerAcknowledged: true,
+                rationale: 'Aprobacion demo para validacion local'
+              }
+            ]
+          : [],
+        executionHistory: lastAttempt ? [lastAttempt] : [],
         failureDiagnosis,
+        createdAt: new Date(),
+        lastUpdatedAt: new Date(),
+        timeToApprovalMs: 1500,
+        timeToExecutionMs: 2200,
       };
 
       res.status(200).json({

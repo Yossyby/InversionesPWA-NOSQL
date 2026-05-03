@@ -1,4 +1,4 @@
-import { createAuditEvent, type AuditEvent } from "./auditEvent.js";
+import { createAuditEvent, type AuditEvent } from "./auditEvent";
 
 export interface DisclaimerAckInput {
   correlationId: string;

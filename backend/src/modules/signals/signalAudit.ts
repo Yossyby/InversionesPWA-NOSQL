@@ -1,4 +1,4 @@
-import { createAuditEvent, type AuditEvent } from "../../domain/auditEvent.js";
+import { createAuditEvent, type AuditEvent } from "../../domain/auditEvent";
 
 interface SignalAuditInput {
   correlationId: string;

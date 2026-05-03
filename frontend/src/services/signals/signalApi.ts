@@ -33,11 +33,26 @@ export interface SignalDetailsResponse {
 
 const API_BASE = "/api/signals";
 
+function buildAuthHeaders(): Record<string, string> {
+  const headers: Record<string, string> = {};
+  const envToken = import.meta.env.VITE_DEV_BEARER_TOKEN as string | undefined;
+  const storageToken =
+    typeof window !== "undefined" ? window.localStorage.getItem("inversions.dev.token") ?? undefined : undefined;
+  const token = envToken || storageToken;
+
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
+  return headers;
+}
+
 export async function evaluateSignal(payload: EvaluateSignalRequest): Promise<EvaluateSignalResponse> {
   const response = await fetch(`${API_BASE}/evaluate`, {
     method: "POST",
     headers: {
-      "Content-Type": "application/json"
+      "Content-Type": "application/json",
+      ...buildAuthHeaders()
     },
     body: JSON.stringify(payload)
   });
@@ -50,7 +65,11 @@ export async function evaluateSignal(payload: EvaluateSignalRequest): Promise<Ev
 }
 
 export async function getSignalDetails(signalId: string): Promise<SignalDetailsResponse> {
-  const response = await fetch(`${API_BASE}/${signalId}/details`);
+  const response = await fetch(`${API_BASE}/${signalId}/details`, {
+    headers: {
+      ...buildAuthHeaders()
+    }
+  });
 
   if (!response.ok) {
     throw new Error(`Error al obtener detalle de senal: ${response.status}`);

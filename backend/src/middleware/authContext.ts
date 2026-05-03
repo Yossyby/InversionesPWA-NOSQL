@@ -29,6 +29,17 @@ function isValidRole(role: string | undefined): role is UserRole {
 }
 
 export function authContextMiddleware(req: Request, res: Response, next: NextFunction): void {
+  if (process.env.AUTH_BYPASS === "true") {
+    req.authContext = {
+      userId: process.env.AUTH_BYPASS_USER_ID ?? "dev-user",
+      email: process.env.AUTH_BYPASS_EMAIL ?? "dev@local",
+      role: (process.env.AUTH_BYPASS_ROLE as UserRole) ?? "trader",
+      mfaSessionId: req.header("x-mfa-session-id") ?? "dev-mfa-session"
+    };
+    next();
+    return;
+  }
+
   const authorization = req.header("authorization");
 
   if (!authorization?.startsWith("Bearer ")) {

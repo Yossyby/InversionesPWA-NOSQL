@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { authContextMiddleware } from "../../middleware/authContext.js";
+import { authContextMiddleware } from "../../middleware/authContext";
 
 export const signalDetailsRouter = Router();
 
