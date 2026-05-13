@@ -4,62 +4,79 @@
 Identificador: 001-INV-PLAN
 Proyecto: DIANA Inversions
 Iniciativa: 001-inversions
-Version de regeneracion: 2026-04-28
-Accion: /diana.plan action="regenerate" scope="project" project="diana-inversions"
+Version de regeneracion: 2026-05-12
+Accion: /diana.plan action="regenerate" scope="project" project="diana-inversions" initiative="001-inversions"
 
-Especificacion implementada:
-- 001-DIANA-INVERSIONS-SPEC
-- specs/001-plataforma-inversiones-ia/spec.md (operativa)
+---
 
-Autoridad:
-Este plan tecnico esta subordinado a:
+## Autoridad
+
+Este plan tecnico canonico esta subordinado a:
 1. inv-constitution.md
 2. 001-inv-spec.md
-3. spec.md (operativa derivada)
+3. spec.md (operativa derivada, cuando aplique)
 
-Ante conflicto, prevalece la constitucion y la especificacion canonica.
+Ante conflicto, prevalece la constitucion.
 
-## 0. Entradas Oficiales Consumidas
+---
 
-Fuentes de negocio y canon:
+## Entradas Oficiales Consumidas
+
+Fuentes canonicas:
 - .drfic/diana-sdk/projects/knowledge/indexes/projects-knowledge-radar.yaml
 - .drfic/diana-sdk/projects/diana-inversions/inv-constitution.md
 - .drfic/diana-sdk/projects/diana-inversions/initiatives/001-inversions/001-inv-spec.md
-- specs/001-plataforma-inversiones-ia/spec.md
 - .drfic/diana-sdk/projects/diana-inversions/governance/change-requests/001-inv-ucc.md
 - .drfic/diana-sdk/projects/diana-inversions/governance/tickets/001-inv-tkt.md
 - .drfic/diana-sdk/projects/diana-inversions/initiatives/001-inversions/meta.md
 
-Skills y knowledge first:
+Fuentes operativas derivadas:
+- specs/001-plataforma-inversiones-ia/spec.md
+- specs/001-plataforma-inversiones-ia/plan.md previo
+
+Fuente vigente de alcance para esta regeneracion:
+- .drfic/diana-sdk/projects/diana-inversions/initiatives/001-inversions/001-inv-tasks.md
+
+Skills y knowledge first cargados:
 - .drfic/diana-sdk/projects/diana-inversions/knowledge/indexes/skills-manifest.yaml
 - .drfic/diana-sdk/projects/diana-inversions/knowledge/indexes/agent-skill-matrix.yaml
 - .drfic/diana-sdk/projects/diana-inversions/knowledge/indexes/sdd-engine-matrix.yaml
+- .drfic/diana-sdk/sdk/diana/knowledge/indexes/shared-skills-manifest.yaml
 - .drfic/diana-sdk/projects/knowledge/indexes/master-index.md
 - .drfic/diana-sdk/projects/diana-inversions/knowledge/indexes/master-index.md
 - .drfic/diana-sdk/sdk/diana/knowledge/indexes/master-index.md
 
-## 1. Objetivo del Plan
+Estado de cobertura de knowledge:
+- Required skills de speckit.plan presentes en manifest y matrices del proyecto.
+- Knowledge SDK-level disponible como contexto de apoyo; varias entradas permanecen en estado esqueleto y no bloquean la regeneracion.
 
-Definir el como tecnico para implementar una plataforma de inversion asistida por IA, con control humano obligatorio, trazabilidad completa y ejecucion asistida en IBKR y Alpaca, sin introducir nuevos requisitos fuera de FR-001..FR-019 y SC-001..SC-008.
+---
 
-## 2. Alcance y Exclusiones
+## Objetivo del Plan
+
+Definir el como tecnico para implementar la iniciativa 001-inversions de forma consistente con constitucion, especificacion canonica, especificacion operativa y backlog canonico vigente, sin introducir nuevos requisitos funcionales fuera de lo ya aprobado y dejando la salida lista para /speckit.plan.
+
+---
+
+## Alcance y Exclusiones
 
 Incluye:
-- Arquitectura modular PWA + REST API.
-- Orquestacion de cores analiticos y motor de confluencia.
-- Flujo operativo de propuesta, aprobacion y ejecucion asistida.
-- Seguridad, observabilidad, resiliencia y cumplimiento.
-- Base de trazabilidad para /speckit.plan.
+- Arquitectura objetivo para PWA, REST API, datos, brokers, cores analiticos y servicios de estrategia.
+- Cobertura explicita de Fase 1 a Fase 16 del backlog canonico, incluyendo dependencias entre ondas de equipos y estandarizacion transversal.
+- Guardrails tecnicos para seguridad, resiliencia, observabilidad, cumplimiento y gobierno de automatismos de riesgo/cierre.
+- Criterios de validacion tecnica y readiness hacia Speckit.
 
 Excluye:
-- Auto-trading.
-- IA como unica fuente de decision.
-- Nuevos mercados fuera de acciones/opciones US.
-- Redefinicion funcional de la especificacion.
+- Reescritura o renumeracion del backlog canonico.
+- Nuevos requisitos funcionales no sustentados por constitucion, specs o backlog canonico vigente.
+- Auto-trading, ejecucion sin aprobacion humana o interpretaciones que conviertan IA/risk engines en ejecutores autonomos.
+- Cambios a artefactos de teams o a 001-inv-tasks.md.
 
-## 3. Skills Requeridas para Etapa Plan
+---
 
-Required skills (speckit.plan):
+## Skills Requeridas para Etapa de Plan
+
+Required skills de speckit.plan:
 - 001-inv-technical-analysis-structure
 - 002-inv-indicator-signal-logic
 - 004-inv-options-strategy-engine
@@ -70,156 +87,428 @@ Required skills (speckit.plan):
 - 010-inv-broker-integration-ibkr-alpaca
 - 011-inv-portfolio-and-performance-analytics
 
-Cobertura actual: completa en skills-manifest.yaml.
-Politica de fallback: si un skill/knowledge faltara en futuras ejecuciones, continuar con metodologia estandar y reportar gap.
+Skills compartidos de apoyo:
+- 001-SDK-SDDCORE
+- 002-SDK-TSSTACK
 
-## 4. Arquitectura Tecnica Objetivo
+Estado de cobertura por skill:
+- Cobertura del proyecto: completa para la etapa plan.
+- Cobertura SDK compartida: suficiente como apoyo metodologico.
 
-### 4.1 Vista de capas
+Politica de fallback:
+- Si un skill o knowledge local quedara incompleto en futuras regeneraciones, continuar con metodologia estandar del engine, reportar el gap y recomendar /diana.knowledge.
 
-1. Capa Frontend (PWA):
-- Dashboard, watchlists, detalle de senales, historial.
-- Flujo de aprobacion humana explicita.
-- Visualizacion de evidencia y disclaimers.
+---
 
-2. Capa API (Node.js/Express):
-- AuthN JWT Bearer.
-- AuthZ RBAC (viewer, trader, admin).
-- Politicas MFA para aprobacion/ejecucion sensible.
-- Orquestacion de analisis, propuestas y ejecucion asistida.
+## Arquitectura Tecnica Objetivo
 
-3. Capa Dominio:
-- Entidades: Usuario, Fuente Analitica, Senal, Propuesta Operativa, Decision Humana, Intento de Ejecucion, Registro de Auditoria.
-- Maquina de estados de orden y control de concurrencia por version.
+### Vista de capas
 
-4. Capa Integraciones:
-- Brokers: IBKR y Alpaca por adaptadores desacoplados.
-- Market data en tiempo real con objetivo p95 <= 1s.
-- Servicio IA para confluencia/explicabilidad (sin autonomia de ejecucion).
+1. Capa de experiencia
+- PWA React/Vite/TypeScript con modulos de senales, dashboard, ejecucion, auditoria y workbenches de estrategias.
+- Visualizacion de evidencia, overlays de mercado, explicabilidad, reportes y disclaimers de no-asesoria.
 
-5. Capa Datos:
-- Supabase como store operacional primario.
-- MongoDB opcional para historicos y contexto IA.
-- Retencion minima de evidencia: 365 dias.
+2. Capa de API y seguridad
+- REST API Node.js/Express con JWT Bearer, RBAC, MFA, rate limiting y contratos estables por feature.
+- Endpoints segregados para evaluacion, aprobacion, ejecucion asistida, historial, dashboard, cores analiticos y estrategias.
 
-### 4.2 Controles tecnicos obligatorios
+3. Capa de dominio y politicas
+- Ciclo de vida canonico de senal, propuesta, decision humana e intento de ejecucion.
+- Politicas de versionado, optimistic locking, auditoria, retencion, disclaimer y resiliencia de dependencias.
+- Politicas explicitas para separar analisis, recomendacion, aprobacion y ejecucion broker-side.
 
-- Fail-fast en fallas de broker: estado FALLIDA y nueva aprobacion humana para reintento.
-- Optimistic locking por version de orden para concurrencia.
-- Rate limiting por usuario y endpoint sensible con 429 y cooldown.
-- RTO <= 30 min y RPO <= 5 min para servicios criticos.
-- Trazabilidad de aprobacion/ejecucion con MFA para trader/admin.
+4. Capa de cores analiticos y estrategias
+- Cores desacoplados para indicadores, estructura tecnica, fundamental, institucional, noticias, opciones, confluencia e IA.
+- Motores de estrategia por familias: basicas, Wheel, cobertura, spreads, volatilidad, complejas y term structure.
+- Orquestacion AI multi-agente solo para consolidacion, investigacion y reporteria, nunca para ejecucion autonoma.
 
-## 5. Fases Tecnicas de Implementacion
+5. Capa de integraciones, datos y retencion
+- Supabase como store operacional primario con esquema baseline versionado y migraciones controladas.
+- MongoDB opcional para historicos o archivos analiticos cuando el caso lo justifique.
+- Adaptadores para IBKR y Alpaca, conectores de market data y conectores de fuentes externas con cache/fallback.
 
-### Fase 1: Fundacion de Plataforma
+### Controles tecnicos obligatorios
+
+- Seguridad: JWT server-side, RBAC por rol, MFA obligatorio en aprobacion/ejecucion y credenciales solo en .env.
+- Resiliencia: fail-fast en broker, RTO <= 30 min, RPO <= 5 min, politicas de dependencia y rollback operativo.
+- Observabilidad: logs estructurados, trazas de auditoria, metricas de market freshness, disponibilidad y cobertura MFA.
+- Cumplimiento: disclaimer explicito, retencion minima de 365 dias, evidencia auditable y comentarios FIC en codigo critico.
+- Determinismo: los calculos financieros, señales y risk metrics deben permanecer en motores deterministas; LLMs solo generan narrativa, resumen o consolidacion explicable.
+- Guardrail constitucional de automatismos: cualquier stop-loss automatico, cierre sugerido, roll o gestion de riesgo que termine en orden real hacia broker debe pasar por aprobacion humana explicita, MFA, validacion de version y auditoria. Se permite automatizar deteccion, alerta, simulacion, pre-armado de propuesta o bloqueo preventivo de nuevas ordenes, pero no la ejecucion sin humano en el loop.
+
+---
+
+## Fases Tecnicas de Implementacion
+
+### Fase 1: Preparacion de plataforma
+
+Backlog soportado:
+- T000-T005, T059
 
 Objetivo:
-Establecer bases de arquitectura, seguridad y observabilidad.
+- Establecer estructura base, convenciones de calidad y baseline operacional de datos antes del resto del delivery.
 
 Entregables:
-- Estructura backend/frontend y contratos base.
-- Middleware JWT, RBAC y hooks de MFA.
-- Health checks, logging estructurado y metricas base.
+- Estructura canonica del workspace y ownership tecnico inicial.
+- Scripts de calidad y entorno para frontend/backend.
+- Esquema baseline versionado en Supabase para entidades operacionales nucleares.
 
-Trazabilidad:
-- FR-012, FR-017, FR-019, SC-005
+Trazabilidad a requisitos:
+- FR-007, FR-012, FR-017, FR-019
+- SC-005
+- Constitucion secciones 7, 8 y 9
 
-#### Project Structure
+### Fase 2: Fundacional bloqueante
 
-##### Documentacion de la feature
+Backlog soportado:
+- T006-T016
 
-```text
-C:.
-+---.drfic
-|   |   readme.md
-|   \---diana-sdk
-|       +---memory
-|       +---projects
-|       |   +---diana-inversions
-|       |   |   |   inv-constitution.md
-|       |   |   |   README.md
-|       |   |   +---governance
-|       |   |   |   |   decision-log.md
-|       |   |   |   +---change-requests
-|       |   |   |   |       001-inv-ucc.md
-|       |   |   |   \---tickets
-|       |   |   |           001-inv-tkt.md
-|       |   |   +---initiatives
-|       |   |   |   \---001-inversions
-|       |   |   |       |   001-inv-plan.md
-|       |   |   |       |   001-inv-spec.md
-|       |   |   |       |   meta.md
-|       |   |   |       \---speckit
-|       |   |   \---knowledge
-|       |   |       |   README.md
-|       |   |       +---indexes
-|       |   |       |       agent-skill-matrix.yaml
-|       |   |       |       by-topic.md
-|       |   |       |       master-index.md
-|       |   |       |       sdd-engine-matrix.yaml
-|       |   |       |       skills-manifest.yaml
-|       |   |       |       skills-traceability.md
-|       |   |       +---local
-|       |   |       |   +---brokers
-|       |   |       |   |       001-ibkr-tws-api.md
-|       |   |       |   |       002-ibkr-client-portal.md
-|       |   |       |   |       003-alpaca-api.md
-|       |   |       |   +---compliance
-|       |   |       |   |       001-non-advisory-disclaimer.md
-|       |   |       |   |       002-data-retention-mx.md
-|       |   |       |   +---cores
-|       |   |       |   |       001-technical-analysis-core.md
-|       |   |       |   |       002-fundamental-analysis-core.md
-|       |   |       |   |       003-buy-sell-signals-core.md
-|       |   |       |   |       004-options-strategies-core.md
-|       |   |       |   |       005-institutional-options-flow-core.md
-|       |   |       |   |       006-realtime-news-core.md
-|       |   |       |   |       007-ai-confluence-orchestrator-core.md
-|       |   |       |   +---domain
-|       |   |       |   |       001-order-lifecycle.md
-|       |   |       |   |       002-market-data.md
-|       |   |       |   |       003-portfolio-analytics.md
-|       |   |       |   \---patterns
-|       |   |       |           001-jwt-supabase-auth.md
-|       |   |       |           002-realtime-market-feed.md
-|       |   |       +---remote
-|       |   |       |   |   sources.md
-|       |   |       |   |
-|       |   |       |   +---evernote
-|       |   |       |   |       .gitkeep
-|       |   |       |   |
-|       |   |       |   +---notebooklm
-|       |   |       |   |       .gitkeep
-|       |   |       |   |
-|       |   |       |   \---notion
-|       |   |       |           .gitkeep
-|       |   |       +---skills
-|       |   |       |       001-inv-technical-analysis-structure.md
-|       |   |       |       002-inv-indicator-signal-logic.md
-|       |   |       |       003-inv-fundamental-analysis.md
-|       |   |       |       004-inv-options-strategy-engine.md
-|       |   |       |       005-inv-institutional-options-flow.md
-|       |   |       |       006-inv-realtime-news-impact.md
-|       |   |       |       007-inv-ai-confluence-orchestration.md
-|       |   |       |       008-inv-market-data-and-realtime.md
-|       |   |       |       009-inv-execution-governance-human-control.md
-|       |   |       |       010-inv-broker-integration-ibkr-alpaca.md
-|       |   |       |       011-inv-portfolio-and-performance-analytics.md
-|       |   |       |       012-inv-compliance-audit-retention.md
-|       |   |       |       README.md
-|       |   |       \---snapshots
-|       |   |               .gitkeep
-|       |   +---diana-sdk-core
-|       |   |   |   dianacore-constitution.md
-|       |   |   +---governance
-|       |   |   |   |   decision-log.md
-|       |   |   |   |
-|       |   |   |   +---change-requests
-|       |   |   |   |       001-dianacore-cc.md
-|       |   |   |   |
-|       |   |   |   \---tickets
-|       |   |   |           001-dianacore-tkt.md
+Objetivo:
+- Cerrar prerrequisitos de seguridad, gobernanza, concurrencia, auditoria y observabilidad que bloquean las historias y fases de equipos.
+
+Entregables:
+- Middleware de autenticacion, RBAC y MFA.
+- Dominio de lifecycle, auditoria, disclaimer, versionado y rate limiting.
+- Metricas base de market data, retencion y resiliencia de dependencias.
+
+Trazabilidad a requisitos:
+- FR-004, FR-005, FR-012, FR-013, FR-015, FR-016, FR-017, FR-018, FR-019
+- SC-005, SC-006, SC-007, SC-008
+- Constitucion secciones 3.1, 6, 7 y 10
+
+### Fase 3: US1 evaluacion de oportunidades
+
+Backlog soportado:
+- T017-T025
+
+Objetivo:
+- Generar senales explicables por confluencia con evidencia trazable y configuracion de fuentes.
+
+Entregables:
+- Configuracion de fuentes, confluence engine y ensamblado de explicabilidad.
+- Endpoints de evaluacion/detalle y servicios frontend de senales.
+- Eventos de auditoria de generacion de senales.
+
+Trazabilidad a requisitos:
+- FR-001, FR-002, FR-003, FR-006, FR-010
+- SC-001, SC-004
+- Constitucion secciones 3.2, 3.3 y 4
+
+### Fase 4: US2 control humano en ejecucion
+
+Backlog soportado:
+- T026-T036
+
+Objetivo:
+- Garantizar aprobacion humana estricta y ejecucion asistida desacoplada por broker.
+
+Entregables:
+- Servicio de aprobacion MFA y orquestacion de ejecucion asistida.
+- Contrato de adaptador broker, adaptadores IBKR y Alpaca.
+- Endpoints de aprobacion/ejecucion, recuperacion fail-fast y auditoria operativa.
+
+Trazabilidad a requisitos:
+- FR-004, FR-005, FR-008, FR-009, FR-014, FR-016, FR-019
+- SC-002, SC-008
+- Constitucion secciones 3.1, 5 y 6
+
+### Fase 5: US3 auditoria y resultados
+
+Backlog soportado:
+- T037-T043
+
+Objetivo:
+- Exponer historial auditable y analitica operacional para seguimiento y mejora post-evento.
+
+Entregables:
+- Servicio y endpoints de historial/detalle operativo.
+- Dashboard y timeline de auditoria en frontend.
+- Metricas de historial y analitica de portafolio auditable.
+
+Trazabilidad a requisitos:
+- FR-006, FR-007, FR-011, FR-013
+- SC-003
+- Constitucion secciones 6, 7 y 10
+
+### Fase 6: Cierre y hardening transversal
+
+Backlog soportado:
+- T044-T058
+
+Objetivo:
+- Consolidar contratos, runbooks, SLOs, simulacros y gates de cumplimiento antes de ampliar el alcance multi-equipo.
+
+Entregables:
+- Contratos actualizados, matriz de trazabilidad y quickstart validado.
+- SLI/SLO de disponibilidad, runbook de recuperacion y simulacro RTO/RPO.
+- Cobertura MFA, gates estructurales y checklist FIC bilingue.
+
+Trazabilidad a requisitos:
+- FR-007, FR-011, FR-012, FR-013, FR-018, FR-019
+- SC-005, SC-007, SC-008
+- Constitucion secciones 7, 8 y 10
+
+### Fase 7: TEAM-01 dashboard e integracion broker
+
+Backlog soportado:
+- T060-T068
+
+Objetivo:
+- Habilitar la capa visible de dashboard principal y el wiring de datos/brokers sobre una base operacional versionada.
+
+Entregables:
+- Cliente Supabase, repositories base, migraciones versionadas y validador de entorno.
+- Dashboard principal con selector de instrumentos, activacion de cores, overlay de senales y tabla de explicabilidad.
+- API orquestadora de dashboard e integracion broker en sandbox.
+
+Trazabilidad a requisitos:
+- FR-001, FR-002, FR-003, FR-008, FR-012
+- SC-001, SC-004, SC-006
+- Constitucion secciones 3.2, 4, 7 y 9
+
+### Fase 8: TEAM-02 indicadores tecnicos y chat IA
+
+Backlog soportado:
+- T069-T076
+
+Objetivo:
+- Implementar el core de indicadores tecnicos parametrizados y su capa de consumo analitico/reporteria.
+
+Entregables:
+- Contratos y motor multi-indicador con API de evaluacion.
+- Confluencia estricta y explicabilidad por indicador.
+- Chat IA de solo lectura y servicios de reportes/graficas basados en resultados almacenados.
+
+Trazabilidad a requisitos:
+- FR-001, FR-002, FR-003, FR-010, FR-011
+- SC-001, SC-004
+- Constitucion secciones 3.2, 3.3, 4 y 6
+
+### Fase 9: TEAM-03 fundamental y estrategias basicas de opciones
+
+Backlog soportado:
+- T077-T090
+
+Objetivo:
+- Incorporar analisis fundamental y el primer bloque de estrategias de opciones con simulacion y comparacion.
+
+Entregables:
+- Integracion de fuentes fundamentales, viability engine y screener S&P500.
+- Cores Long Call, Long Put, Short Call y Short Put con simulacion temporal, alertas y comparador.
+- Chat IA de solo lectura para analisis fundamental y estrategias.
+
+Trazabilidad a requisitos:
+- FR-001, FR-002, FR-003, FR-010, FR-011
+- SC-001, SC-004
+- Constitucion secciones 1, 3.2, 3.3, 4 y 6
+
+### Fase 10: TEAM-04 estructura tecnica y estrategia Wheel
+
+Backlog soportado:
+- T091-T105
+
+Objetivo:
+- Sumar analisis tecnico estructural y estrategia Wheel con pronostico explicable y comparacion contextual.
+
+Entregables:
+- Contratos, algoritmos internos y proveedor externo para soportes, resistencias y tendencias.
+- API de estructura y pronostico de velas enriquecido por contexto multi-core.
+- Cores Covered Call y Cash-Secured Put, orquestador Wheel, comparador y chat IA de solo lectura.
+
+Trazabilidad a requisitos:
+- FR-001, FR-002, FR-003, FR-010, FR-011
+- SC-001, SC-004
+- Constitucion secciones 1, 3.2, 3.3 y 4
+
+### Fase 11: TEAM-05 analisis institucional y estrategias de cobertura
+
+Backlog soportado:
+- T106-T121
+
+Objetivo:
+- Integrar el core institucional y estrategias de cobertura con simulacion avanzada, reporting y riesgo.
+
+Entregables:
+- Integracion de fuentes regulatorias/mercado, motores de zonas, tendencias y vencimientos institucionales.
+- APIs institucionales y de posiciones regulatorias.
+- Cores Protective Put, Collar y Covered Straddle con simulacion, riesgo, reportes y comparador.
+- Chat IA de solo lectura para datos institucionales y resultados de simulacion.
+
+Trazabilidad a requisitos:
+- FR-001, FR-002, FR-003, FR-007, FR-010, FR-011
+- SC-001, SC-003
+- Constitucion secciones 1, 3.2, 3.3, 4 y 6
+
+### Fase 12: TEAM-06 noticias y spreads
+
+Backlog soportado:
+- T122-T136
+
+Objetivo:
+- Operacionalizar noticias y contexto regulatorio como core explicable y conectarlo con estrategias debit/credit spread.
+
+Entregables:
+- Contratos, integradores de noticias y clasificador de impacto.
+- APIs de confluencia noticiosa y contexto regulatorio/institucional.
+- Cores debit/credit spread, simulacion, riesgo, reporting, comparador y orquestador noticias-estrategias.
+- Chat IA de solo lectura sobre noticias procesadas y simulaciones.
+
+Trazabilidad a requisitos:
+- FR-001, FR-002, FR-003, FR-010, FR-011
+- SC-001, SC-004
+- Constitucion secciones 1, 3.2, 3.3 y 4
+
+### Fase 13: TEAM-07 core AI multi-agente y estrategias long/short volatility
+
+Backlog soportado:
+- T137-T152
+
+Objetivo:
+- Implementar una capa de orquestacion AI multi-agente gobernada y estrategias de volatilidad con controles reforzados por su riesgo operacional.
+
+Entregables:
+- Contrato de orquestacion, strategy registry, agent router, policy engine, pipeline de investigacion hibrida, report engine y viability evaluator.
+- API de inteligencia orquestada con trazabilidad de fuentes/versiones.
+- Cores Long/Short Straddle y Long/Short Strangle con simulacion avanzada, griegas, costos reales, risk engine y APIs dedicadas.
+
+Guardrails especificos de fase:
+- Ningun agente AI puede emitir ordenes a broker, mutar estados de ejecucion ni eludir aprobacion humana.
+- El policy engine debe bloquear contenido no verificable y separar calculo determinista de narrativa.
+- En estrategias short volatility, kill-switch y alertas pueden congelar nuevas ordenes o abrir una propuesta de defensa, pero la orden real de cierre/roll exige aprobacion humana explicita.
+
+Trazabilidad a requisitos:
+- FR-001, FR-002, FR-007, FR-010, FR-011
+- SC-001, SC-003
+- Constitucion secciones 3.1, 3.3, 4, 6 y 7
+
+### Fase 14: TEAM-08 estrategias complejas
+
+Backlog soportado:
+- T153-T161
+
+Objetivo:
+- Implementar el bloque de estrategias complejas con simulacion profesional, reporting y riesgo homologado.
+
+Entregables:
+- Contrato base y cores de Iron Condor, Iron Butterfly, Butterfly Spread y Condor.
+- Motor de simulacion, risk engine y report engine con salidas profesionales.
+- APIs dedicadas y comparador contextual.
+
+Guardrails especificos de fase:
+- Las estrategias multi-leg deben conservar trazabilidad por pata, validacion de margen y bloqueo de ejecucion sin propuesta aprobada.
+- Cualquier automatismo de ajuste o defensa se limita a recomendacion, alerta o propuesta pre-armada hasta que exista aprobacion humana.
+
+Trazabilidad a requisitos:
+- FR-001, FR-002, FR-007, FR-010, FR-011
+- SC-001, SC-003
+- Constitucion secciones 1, 3.1, 3.3, 4 y 6
+
+### Fase 15: TEAM-09 estrategias Calendar y Diagonal
+
+Backlog soportado:
+- T162-T169
+
+Objetivo:
+- Implementar estrategias de estructura temporal con riesgo, reporting y reglas de roll gobernadas constitucionalmente.
+
+Entregables:
+- Contrato base Calendar/Diagonal y cores dedicados.
+- Motor de simulacion temporal, risk engine, reporting y comparador.
+- Orquestador de roll/ajuste con control de deterioro temporal.
+
+Guardrails especificos de fase:
+- El orquestador de roll puede recomendar o preparar ajustes, pero no ejecutar cierres/rolls automaticamente contra broker.
+- Las reglas temporales deben preservar versionado, auditoria y necesidad de aprobacion humana previa a cualquier orden derivada.
+
+Trazabilidad a requisitos:
+- FR-001, FR-002, FR-007, FR-010, FR-011
+- SC-001, SC-003
+- Constitucion secciones 1, 3.1, 3.3, 4 y 6
+
+### Fase 16: estandarizacion transversal de estrategias
+
+Backlog soportado:
+- T170-T177
+
+Objetivo:
+- Normalizar contratos, outputs, simulacion, riesgo, reporting y auditoria de todas las familias de estrategia para comparabilidad homogena.
+
+Entregables:
+- Estandar transversal de request/response y salidas de estrategia.
+- Ajustes de alineacion para TEAM-03 a TEAM-09 bajo un mismo envelope de payoff, escenarios, metricas de riesgo, senales y audit trail.
+- Base estable para comparadores globales, testing transversal y control de regresion estrategica.
+
+Trazabilidad a requisitos:
+- FR-002, FR-006, FR-007, FR-011, FR-016
+- SC-001, SC-003
+- Constitucion secciones 4, 7 y 10
+
+---
+
+## Dependencias y Secuencia de Implementacion
+
+- Fase 1 habilita el baseline estructural y de datos; T059 permanece como prerrequisito tecnico para las fases analiticas y de equipos.
+- Fase 2 bloquea seguridad, concurrencia, resiliencia y auditoria antes de ampliar superficie funcional.
+- Fases 3, 4 y 5 consolidan el MVP constitucional de senales, control humano y auditoria.
+- Fase 6 cierra contratos, runbooks y gates transversales antes del escalamiento multi-equipo.
+- Fase 7 depende de Fase 2 y de T059; estabiliza dashboard, Supabase client y wiring broker para el resto.
+- Fases 8 a 15 pueden ejecutarse por ondas con alto paralelismo despues de T059/T060, manteniendo contratos, repositorios y observabilidad comunes.
+- Fase 13 introduce el mayor riesgo constitucional por orquestacion AI y estrategias short volatility; requiere aplicar guardrails reforzados antes de exponer automatismos operativos.
+- Fase 16 solo inicia tras cerrar funcionalmente las familias de estrategias TEAM-03 a TEAM-09 y sirve como gate de homogeneizacion previo a mayor automatizacion analitica.
+
+---
+
+## Riesgos, Supuestos y Mitigaciones
+
+- Riesgo: interpretacion de stop-loss, kill-switch, roll o cierre automatico como auto-trading. Impacto: critico. Probabilidad: alta en fases 9-15. Mitigacion: convertir cualquier accion broker-side en propuesta aprobable con MFA, auditoria y versionado; permitir solo alerta, simulacion o bloqueo preventivo sin humano en el loop. Owner: arquitectura + seguridad.
+- Riesgo: la orquestacion AI multi-agente se convierta en fuente unica o no verificable de decision. Impacto: critico. Probabilidad: media. Mitigacion: separar calculo determinista de narrativa, policy engine con whitelist y verificacion de fuentes, trazabilidad por request_id y bloqueo de prompts/salidas no auditables. Owner: arquitectura AI.
+- Riesgo: drift entre backlog canonico y artefactos operativos de SpecKit para fases 7-16. Impacto: alto. Probabilidad: alta. Mitigacion: mantener este plan subordinado al backlog canonico, ejecutar validacion posterior con diana.tasks validate y resincronizar specs operativos antes de implementacion masiva. Owner: gobernanza SDD.
+- Riesgo: heterogeneidad de contratos y outputs entre familias de estrategias. Impacto: alto. Probabilidad: alta. Mitigacion: usar Fase 16 como gate obligatorio, con envelope estandar y comparadores alineados antes de optimizaciones posteriores. Owner: arquitectura de dominio.
+- Riesgo: calidad/latencia de fuentes externas de mercado, noticias, institucional y fundamentales. Impacto: alto. Probabilidad: media. Mitigacion: cache, fallback entre proveedores, degradacion controlada de confianza y bloqueo de senal cuando la evidencia no cumpla calidad minima. Owner: integraciones.
+- Supuesto: T000 y T059 permanecen como anclas canonicamente validas del backlog y no se alteran fuera de /diana.tasks. Impacto: alto si cambia. Mitigacion: cualquier ajuste debe nacer en backlog canonico y repropagarse a plan y artefactos derivados. Owner: gobernanza.
+
+---
+
+## Criterios de Validacion Tecnica
+
+- Checklist de consistencia constitucional: IA no ejecuta, control humano obligatorio, arquitectura por cores desacoplados, senales explicables, no black-box.
+- Checklist de consistencia con especificacion: cobertura explicita de FR-001..FR-019 y SC-001..SC-008 sin introducir requisitos nuevos fuera del alcance aprobado.
+- Checklist de seguridad/resiliencia/observabilidad/cumplimiento: JWT, RBAC, MFA, rate limit, optimistic locking, RTO/RPO, retencion 365 dias, auditoria, disclaimer y cobertura FIC.
+- Checklist de backlog: el plan explica y soporta T000-T177 sin renumerar, eliminar ni simplificar tareas existentes.
+- Checklist de automatismos de riesgo/cierre: cualquier accion sobre broker requiere aprobacion humana; solo se automatiza deteccion, simulacion, alertamiento, pre-armado de propuesta o bloqueo preventivo.
+- Readiness para descomposicion: dependencias, guardrails, owners de riesgo y gates por fase quedan explicitados para /speckit.plan.
+
+---
+
+## Integracion con Speckit
+
+- estado_readiness_para_speckit_plan: listo, con fases 1-16, dependencias, trazabilidad y guardrails constitucionales explicitados.
+- estado_readiness_para_speckit_tasks: condicionado a validar congruencia del backlog canonico extendido contra specs/001-plataforma-inversiones-ia/tasks.md y plan.md, ya que el backlog canonico vigente va mas alla del operativo hoy sincronizado.
+- recomendaciones:
+  1. Ejecutar /diana.tasks validate sobre la iniciativa para verificar congruencia backlog-plan y detectar gaps de resincronizacion operativa.
+  2. Sincronizar despues los artefactos operativos derivados de SpecKit antes de usar el nuevo alcance extendido en implementacion diaria.
+  3. Mantener Fase 13-Fase 15 bajo revisiones explicitas de seguridad y cumplimiento por el riesgo de automatismos de cierre/roll.
+
+---
+
+## Cambios Significativos vs Version Previa
+
+- El plan fue regenerado sobre la template core obligatoria y normalizado a la estructura de autoridad, entradas, arquitectura, fases, riesgos, validacion e integracion con Speckit.
+- La fuente vigente de alcance se actualizo explicitamente al backlog canonico .drfic/.../001-inv-tasks.md, en lugar de depender solo del plan operativo derivado.
+- La cobertura de fases se extendio de Fase 1-Fase 6 a Fase 1-Fase 16, incorporando TEAM-01 a TEAM-09 y la fase de estandarizacion transversal.
+- Se reemplazo el enfoque previo centrado en una estructura de repo hipotetica por una arquitectura orientada a capacidades, dependencias y guardrails, mas coherente con el estado actual del proyecto y del backlog.
+- Se anadieron guardrails constitucionales explicitos para automatismos de riesgo/cierre, orquestacion AI multi-agente y estrategias de alta complejidad o volatilidad, sin modificar el backlog.
+- Se declaro de forma explicita el gap residual de sincronizacion entre backlog canonico extendido y artefactos operativos de SpecKit.
+
+---
+
+## Estado
+
+Este documento constituye el Plan Tecnico Canonico de la iniciativa 001-inversions y queda listo como base de /speckit.plan, sujeto a la validacion posterior de congruencia backlog-operativo indicada arriba.
+
+Salida canónica hacia descomposición:
+- `/diana.tasks` genera `.drfic/diana-sdk/projects/diana-inversions/initiatives/001-inversions/001-inv-tasks.md` a partir de esta planificación técnica.
+- `specs/001-plataforma-inversiones-ia/tasks.md` se trata como backlog operativo derivado para ejecución con SpecKit.
 |       |   |   +---initiatives
 |       |   |   |   \---001-dianacore
 |       |   |   |           001-dianacore-plan.md
@@ -431,25 +720,24 @@ C:.
 ##### Estructura de codigo (repo)
 
 │
-├── packages/                    # Librerías compartidas (design system, utils, etc.)
-│   ├── ui-library/              # Librería interna de componentes UI
-│   │   ├── src/
-│   │   ├── package.json
-│   │   └── tsconfig.json
-│   ├── utils/                   # Funciones utilitarias compartidas
-│   │   ├── src/
-│   │   ├── package.json
-│   │   └── tsconfig.json
-│   └── types/                   # Tipos globales compartidos
-│       ├── src/
-│       ├── package.json
-│       └── tsconfig.json
-|
-└── projects/                       # Proyectos organizados por categoría
-    ├── pwa/                        # Proyectos PWA
-    │   ├── inversions_app/         # Proyecto: Plataforma de Inversiones IA
+└── projects/                           # Portafolio completo de proyectos y shared code
+    ├── packages/                       # Librerías/código reutilizable para cualquier proyecto
+    │   ├── ui-library/                 # Librería interna de componentes UI
+    │   │   ├── src/
+    │   │   ├── package.json
+    │   │   └── tsconfig.json
+    │   ├── utils/                      # Funciones utilitarias compartidas
+    │   │   ├── src/
+    │   │   ├── package.json
+    │   │   └── tsconfig.json
+    │   └── types/                      # Tipos globales compartidos
+    │       ├── src/
+    │       ├── package.json
+    │       └── tsconfig.json
+    ├── pwa/                            # Todos los proyectos PWA del portafolio
+    │   ├── inversions_app/             # Proyecto: Plataforma de Inversiones IA
     │   │   ├── public/
-    │   │   ├── data/               # Contratos/modelos de referencia por base de datos
+    │   │   ├── data/                   # Contratos/modelos de referencia por base de datos
     │   │   │   ├── supabase/
     │   │   │   │   ├── models/
     │   │   │   │   ├── schema/
@@ -459,60 +747,59 @@ C:.
     │   │   │   │   ├── schema/
     │   │   │   │   └── data/
     │   │   │   └── ...
-    │   │   ├── src/                 # Código ejecutable de la PWA
-    │   │   │   ├── assets/          # Recursos estáticos (imágenes, fuentes, estilos globales)
-    │   │   │   ├── components/      # Componentes reutilizables
-    │   │   │   │   └── ui/          # Atomic design: atoms, molecules, organisms
-    │   │   │   ├── features/        # Módulos funcionales
-    │   │   │   │   ├── dashboard/           # Dashboard principal
-    │   │   │   │   ├── market-scanner/      # Escáner de mercado
-    │   │   │   │   ├── options-chain/       # Cadena de opciones
-    │   │   │   │   ├── signals/             # Motor de señales
-    │   │   │   │   ├── portfolio/           # Gestión de portafolio
-    │   │   │   │   ├── broker-connect/      # Conexión con brokers
-    │   │   │   │   ├── backtesting/         # Backtesting de estrategias
-    │   │   │   │   └── alerts/              # Sistema de alertas
-    │   │   │   ├── hooks/           # Hooks globales
-    │   │   │   ├── layouts/         # Layouts generales
-    │   │   │   ├── pages/           # Páginas principales
-    │   │   │   ├── routes/          # Configuración de rutas
-    │   │   │   ├── services/        # Servicios externos
-    │   │   │   │   ├── broker/                # Integración con brokers (IBKR, etc.)
-    │   │   │   │   ├── market-data/           # Feeds de datos (TradingView, etc.)
-    │   │   │   │   ├── indicators/            # Motor de indicadores técnicos
-    │   │   │   │   ├── technical-analysis/    # Análisis Tecnico (datos para graficar soportes, resistencias y tendencias)
-    │   │   │   │   ├── fundamental-analysis/  # Análisis Fundamental (datos financieros de los instrumentos/empresas)
-    │   │   │   │   └── ai-analysis/            # Análisis con IA (Claude API)
-    │   │   │   │   └── institutional-analysis/ # Análisis de las inversiones de los Institucionales
-    │   │   │   │   └── news/                   # Servicio de noticias financieras
-    │   │   │   │   └── strategies/             # Motor de estrategias de trading
-    │   │   │   ├── store/           # Estado global (Zustand/Redux)
-    │   │   │   ├── styles/          # Estilos globales
-    │   │   │   ├── utils/           # Funciones utilitarias
-    │   │   │   ├── types/           # Tipos globales
-    │   │   │   ├── App.tsx          # Componente raíz
-    │   │   │   ├── main.tsx         # Punto de entrada
-    │   │   │   └── vite-env.d.ts    # Tipos generados por Vite
-    │   │   ├── tests/               # Pruebas unitarias e integración
-    │   │   │   └── e2e/             # Pruebas end-to-end
+    │   │   ├── src/                    # Código ejecutable de la PWA
+    │   │   │   ├── assets/
+    │   │   │   ├── components/
+    │   │   │   │   └── ui/
+    │   │   │   ├── features/
+    │   │   │   │   ├── dashboard/
+    │   │   │   │   ├── market-scanner/
+    │   │   │   │   ├── options-chain/
+    │   │   │   │   ├── signals/
+    │   │   │   │   ├── portfolio/
+    │   │   │   │   ├── broker-connect/
+    │   │   │   │   ├── backtesting/
+    │   │   │   │   └── alerts/
+    │   │   │   ├── hooks/
+    │   │   │   ├── layouts/
+    │   │   │   ├── pages/
+    │   │   │   ├── routes/
+    │   │   │   ├── services/
+    │   │   │   │   ├── broker/
+    │   │   │   │   ├── market-data/
+    │   │   │   │   ├── indicators/
+    │   │   │   │   ├── technical-analysis/
+    │   │   │   │   ├── fundamental-analysis/
+    │   │   │   │   ├── ai-analysis/
+    │   │   │   │   ├── institutional-analysis/
+    │   │   │   │   ├── news/
+    │   │   │   │   └── strategies/
+    │   │   │   ├── store/
+    │   │   │   ├── styles/
+    │   │   │   ├── utils/
+    │   │   │   ├── types/
+    │   │   │   ├── App.tsx
+    │   │   │   ├── main.tsx
+    │   │   │   └── vite-env.d.ts
+    │   │   ├── tests/
+    │   │   │   └── e2e/
     │   │   ├── index.html
     │   │   ├── package.json
     │   │   ├── tsconfig.json
     │   │   └── vite.config.ts
-    │
-    └── api/                             # Proyectos backend / APIs REST
-      └── rest_api_inversions_drfic/     # Persistencia real y exposición de endpoints
-        ├── src/
-        │   ├── routes/
-        │   ├── controllers/
-        │   ├── services/
-        │   ├── models/
-        │   ├── migrations/
-        │   └── config/
-        ├── DATABASE_CONFIG.yaml
-        ├── .env.example
-        ├── package.json
-        └── tsconfig.json
+    └── rest-api/                       # Todos los proyectos REST API del portafolio
+        └── rest_api_inversions_drfic/  # Persistencia real y exposición de endpoints
+            ├── src/
+            │   ├── routes/
+            │   ├── controllers/
+            │   ├── services/
+            │   ├── models/
+            │   ├── migrations/
+            │   └── config/
+            ├── DATABASE_CONFIG.yaml
+            ├── .env.example
+            ├── package.json
+            └── tsconfig.json
 ```
 
 

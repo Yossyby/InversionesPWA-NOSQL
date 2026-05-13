@@ -3,9 +3,19 @@
 **Entrada**: Artefactos de diseno desde `/specs/001-plataforma-inversiones-ia/`
 **Prerequisitos**: `plan.md` (obligatorio), `spec.md` (obligatorio), `research.md`, `data-model.md`, `contracts/`
 
+**Autoridad Diana**: Este archivo es un backlog operativo derivado del backlog canónico de Diana en [001-inv-tasks.md](../../.drfic/diana-sdk/projects/diana-inversions/initiatives/001-inversions/001-inv-tasks.md). Ante divergencia, primero se actualiza Diana con `/diana.tasks` y luego se sincroniza este artefacto.
+
 **Pruebas**: No se agregan tareas de test-first porque la spec no pide enfoque TDD explicito. Cada historia conserva criterio de prueba independiente para validacion funcional.
 
 **Organizacion**: Las tareas se agrupan por historia de usuario para implementacion y validacion independientes.
+
+## Operacion Multi-equipo (8 equipos x 5 integrantes)
+
+- Modelo operativo, aliases de equipo, registro de integrantes, flujo de agentes/skills Diana y asignacion completa T001-T058: [team-operating-model.md](team-operating-model.md)
+- Backlog canónico Diana de la iniciativa: [001-inv-tasks.md](../../.drfic/diana-sdk/projects/diana-inversions/initiatives/001-inversions/001-inv-tasks.md)
+- Estandar core de Diana para configurar equipos antes de Speckit: [diana.teams.prompt.md](../../.github/prompts/diana.teams.prompt.md)
+- Esta asignacion es la fuente de verdad para trabajo paralelo en maquinas locales con trazabilidad via SpecKit y Git.
+- Ningun equipo debe implementar fuera de su lote asignado sin PR de contrato aprobado.
 
 ## Formato: `[ID] [P?] [Historia] Descripcion`
 

@@ -187,6 +187,7 @@ El proyecto se rige por principios no negociables:
 - Seguridad estricta de credenciales
 - Evidencia funcional obligatoria
 - Testing, observabilidad y control de errores obligatorios
+- Esquema de base de datos operacional versionado obligatorio (migracion baseline inicial y control de cambios de esquema)
 
 ---
 

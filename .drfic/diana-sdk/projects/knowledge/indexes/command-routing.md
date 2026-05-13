@@ -78,6 +78,53 @@ Fuentes para resolver "todos los tópicos":
 /diana.plan action="regenerate" scope="project" project="diana-inversions"
 ```
 
+### 6) Tareas canonicas Diana (despues de plan)
+
+```text
+/diana.tasks action="generate" scope="project" project="diana-inversions" initiative="001-inversions"
+/diana.tasks action="validate" scope="project" project="diana-inversions" initiative="001-inversions"
+/diana.tasks action="regenerate" scope="project" project="diana-inversions" initiative="001-inversions"
+```
+
+Nota recomendada:
+- Ejecutar `/diana.tasks` antes de `/speckit.tasks` para que el backlog operativo derive del backlog canónico de Diana.
+
+### 7) Coordinacion multi-equipo Diana (despues de tasks)
+
+```text
+/diana.teams action="generate" scope="project" project="diana-inversions" initiative="001-inversions"
+/diana.teams action="validate" scope="project" project="diana-inversions" initiative="001-inversions"
+```
+
+Nota recomendada:
+- Ejecutar `/diana.teams` despues de `/diana.tasks` y antes de `/speckit.implement` cuando haya ejecucion distribuida por equipos.
+
+### 8) Handoff Diana hacia engine SDD
+
+```text
+/diana.integrate action="bootstrap" scope="project" project="diana-inversions" initiative="001-inversions" engine="speckit" orchestration="manual" topology="multi_team"
+/diana.integrate action="generate" scope="project" project="diana-inversions" initiative="001-inversions" engine="speckit" stage="implement"
+/diana.integrate action="validate" scope="project" project="diana-inversions" initiative="001-inversions" engine="speckit" stage="implement"
+```
+
+Notas recomendadas:
+- Ejecutar `/diana.integrate action="bootstrap"` en Fase 0 del ciclo (despues de `/diana.change` y antes de `/diana.constitution`).
+- Ejecutar `/diana.integrate action="generate"` despues de `/diana.tasks`.
+- Si hay ejecucion multi-equipo, ejecutar `/diana.teams` antes de `/diana.integrate`.
+- El engine objetivo consume el handoff generado, no reinterpreta el canon Diana.
+
+### 9) Sincronizacion manual de tareas Diana <-> SpecKit
+
+```text
+/diana.sync action="tasks" mode="dry-run" scope="project" project="diana-inversions" initiative="001-inversions"
+/diana.sync action="tasks" mode="apply" scope="project" project="diana-inversions" initiative="001-inversions"
+```
+
+Notas recomendadas:
+- Usar `dry-run` antes de `apply` para detectar conflictos de mapeo.
+- `apply` actualiza primero slices y luego el backlog global canónico.
+- Mantener IDs Diana (`T0XX`) como llave de sincronizacion obligatoria.
+
 ## Comandos Speckit
 
 > Speckit corre sobre la iniciativa activa del repo/branch. Para controlar proyecto/iniciativa usa el input de ruta de iniciativa cuando aplique.

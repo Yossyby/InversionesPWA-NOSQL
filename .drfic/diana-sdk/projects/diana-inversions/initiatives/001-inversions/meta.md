@@ -17,3 +17,20 @@ No representa una nueva iniciativa ni un nuevo cambio funcional.
 Nota:
 Este archivo es informativo.
 La autoridad técnica comienza en
+
+Topologia aplicada:
+- topology: multi_team
+- source_of_truth: integrations/integration-profile.md
+- materialized_on: 2026-05-12
+
+Artefactos de topologia:
+- scope_primario.md
+- teams/TEAM-01/
+- teams/TEAM-02/
+- teams/TEAM-03/
+- teams/TEAM-04/
+- teams/TEAM-05/
+- teams/TEAM-06/
+- teams/TEAM-07/
+- teams/TEAM-08/
+- teams/TEAM-09/

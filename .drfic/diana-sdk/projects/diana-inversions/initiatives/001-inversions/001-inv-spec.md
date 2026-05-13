@@ -202,6 +202,8 @@ Reglas:
 - Persistencia únicamente server-side
 - Sincronización idempotente
 - Evidencia técnica obligatoria por ticket
+- Debe generarse un esquema inicial versionado en Supabase con migración baseline antes de iniciar la fase fundacional
+- El esquema baseline debe cubrir como mínimo Usuario, ActivoInversion, FuenteAnalitica, SenalInversion, EvidenciaAnalitica, PropuestaOperativa, DecisionHumana, IntentoEjecucion y RegistroAuditoria
 
 ---
 
