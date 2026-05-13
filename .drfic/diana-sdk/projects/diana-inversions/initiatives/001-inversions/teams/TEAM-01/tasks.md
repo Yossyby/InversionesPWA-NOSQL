@@ -58,6 +58,7 @@ Regla:
 - Para cierre de un ID canónico por sync, se requiere que todas las tareas Speckit mapeadas a ese ID estén en [x].
 
 Mapeo explícito TEAM-01:
+- Speckit T000 -> Diana T000
 - Speckit T039 -> Diana T063
 - Speckit T040 -> Diana T064, T065, T066
 - Speckit T041 -> Diana T026
@@ -69,6 +70,23 @@ Mapeo explícito TEAM-01:
 - Speckit T047 -> Diana T036
 - Speckit T048 -> Diana T061
 - Speckit T049 -> Diana T057
+
+### Mappings Inversos: Test Tasks Speckit → Diana
+
+| Tarea Speckit | Tarea(s) Diana TEAM-01 |
+|---|---|
+| T000 (monorepo structure) | T000 |
+| T039 (tests confluenceEngine/signalApi) | T063 |
+| T040 (tests componentes dashboard) | T064, T065, T066 |
+| T041 (tests approvalService/executionAudit) | T026 |
+| T042 (tests integration approve/execute) | T031, T032 |
+| T043 (tests historyService) | T041 |
+| T044 (tests audit routes) | T042 |
+| T045 (coverage report ≥ 80%) | T056 |
+| T046 (tests executionService/failureRecovery) | T027, T033 |
+| T047 (test SLA observabilidad) | T036 |
+| T048 (migración context_snapshot) | T061 |
+| T049 (validación FIC: comments) | T057 |
 
 ## Ciclo Operativo de Sync (TEAM-01)
 

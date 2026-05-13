@@ -50,10 +50,11 @@
 | T041 | Tests unitarios de señales | T039 |
 | T042 | Tests de componentes dashboard | T040 |
 
-### Mapeo Inverso: Test Tasks Speckit → Diana
+### Mapeo Inverso: Speckit → Diana (todos los mappings)
 
 | Tarea Speckit | Tarea(s) Diana TEAM-01 |
 |---|---|
+| T000 (monorepo structure) | T000 |
 | T039 (tests confluenceEngine/signalApi) | T063 |
 | T040 (tests componentes dashboard) | T064, T065, T066 |
 | T041 (tests approvalService/executionAudit) | T026 |
@@ -70,6 +71,7 @@
 
 **Purpose**: Preparar el espacio de feature y baseline documental para ejecucion controlada.
 
+- [ ] T000 Definir y documentar la estructura canónica del monorepo bajo `projects/packages`, `projects/pwa` y `projects/rest-api`, incluyendo criterios de reutilización, ownership por categoría y reglas de dependencia en `.drfic/diana-sdk/projects/diana-inversions/initiatives/001-inversions/monorepo-structure.md`
 - [X] T001 Consolidar alcance tecnico y trazabilidad FR/SC en `specs/002-team-01-dashboard-brokers/plan.md`
 - [X] T002 Crear matriz de trazabilidad canonica TEAM-01 -> feature en `specs/002-team-01-dashboard-brokers/tasks.md`
 - [X] T003 [P] Definir checklist operacional de validacion manual en `specs/002-team-01-dashboard-brokers/checklists/requirements.md`
