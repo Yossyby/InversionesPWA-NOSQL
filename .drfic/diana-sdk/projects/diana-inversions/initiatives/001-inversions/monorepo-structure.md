@@ -8,31 +8,164 @@
 
 ## Árbol Canónico
 
-```
+```text
 inversions_app_pwa/
-├── projects/
-│   ├── packages/                       # Librerías compartidas, reutilizables
-│   │   ├── ui-library/                 # Componentes React reutilizables
-│   │   │   ├── src/
-│   │   │   │   ├── components/
-│   │   │   │   ├── hooks/
-│   │   │   │   ├── utils/
-│   │   │   │   └── index.ts
-│   │   │   ├── package.json
-│   │   │   ├── tsconfig.json
-│   │   │   └── README.md
-│   │   ├── utils/                      # Funciones utilitarias compartidas (helpers, validators, formatters)
-│   │   │   ├── src/
-│   │   │   ├── package.json
-│   │   │   ├── tsconfig.json
-│   │   │   └── README.md
-│   │   └── types/                      # Tipos TypeScript globales compartidos
-│   │       ├── src/
-│   │       ├── package.json
-│   │       ├── tsconfig.json
-│   │       └── README.md
-│   ├── pwa/                            # Todos los proyectos PWA del portafolio
-│   │   └── inversions_app/             # PWA: Plataforma de Inversiones con IA
+│
+└── projects/                           # Portafolio completo de proyectos y shared code
+    ├── packages/                       # Librerías/código reutilizable para cualquier proyecto
+    │   ├── ui-library/                 # Librería interna de componentes UI (React + TailwindCSS)
+    │   │   ├── src/
+    │   │   │   ├── components/         # Componentes agnósticos de dominio (Button, Card, Modal, etc)
+    │   │   │   ├── hooks/              # Hooks reutilizables (useModal, useForm, etc)
+    │   │   │   ├── utils/              # Helpers (styling, animations, etc)
+    │   │   │   └── index.ts
+    │   │   ├── package.json
+    │   │   ├── tsconfig.json
+    │   │   └── README.md
+    │   ├── utils/                      # Funciones utilitarias compartidas (helpers, validators, formatters)
+    │   │   ├── src/
+    │   │   │   ├── validators/         # Validadores agnósticos (email, date, número, etc)
+    │   │   │   ├── formatters/         # Formateadores (moneda, fecha, número, etc)
+    │   │   │   ├── parsers/            # Parseadores (CSV, JSON, etc)
+    │   │   │   └── index.ts
+    │   │   ├── package.json
+    │   │   ├── tsconfig.json
+    │   │   └── README.md
+    │   └── types/                      # Tipos TypeScript globales compartidos
+    │       ├── src/
+    │       │   ├── domain/             # Tipos de dominio compartido (Usuario, Activo, etc)
+    │       │   ├── common/             # Tipos comunes (HTTP, pagination, etc)
+    │       │   └── index.ts
+    │       ├── package.json
+    │       ├── tsconfig.json
+    │       └── README.md
+    │
+    ├── pwa/                            # Todos los proyectos PWA del portafolio
+    │   └── inversions_app/             # Proyecto: Plataforma de Inversiones IA (Vite + React 18)
+    │       ├── public/
+    │       ├── data/                   # Contratos/modelos de referencia por base de datos
+    │       │   ├── supabase/
+    │       │   │   ├── models/         # Modelos de datos (Usuario, SenalConfluente, etc)
+    │       │   │   ├── schema/         # Definiciones de tablas
+    │       │   │   └── data/           # Seeds/fixtures
+    │       │   ├── mongodb/
+    │       │   │   ├── models/
+    │       │   │   ├── schema/
+    │       │   │   └── data/
+    │       │   └── ...                 # Otras BD si aplica
+    │       ├── src/                    # Código ejecutable de la PWA
+    │       │   ├── assets/             # Imágenes, fuentes, SVGs
+    │       │   ├── components/         # Componentes específicos de la app (NO reutilizables)
+    │       │   │   └── ui/             # Componentes que envuelven ui-library
+    │       │   ├── features/           # Módulos de funcionalidad por dominio (reutiliza componentes)
+    │       │   │   ├── dashboard/      # Feature: Dashboard principal
+    │       │   │   ├── market-scanner/ # Feature: Scanner de mercado
+    │       │   │   ├── options-chain/  # Feature: Cadena de opciones
+    │       │   │   ├── signals/        # Feature: Gestión de señales
+    │       │   │   ├── portfolio/      # Feature: Portafolio
+    │       │   │   ├── broker-connect/ # Feature: Integración con brokers
+    │       │   │   ├── backtesting/    # Feature: Backtesting
+    │       │   │   ├── execution/      # Feature: Ejecución y aprobación
+    │       │   │   ├── audit/          # Feature: Auditoría
+    │       │   │   └── alerts/         # Feature: Alertas
+    │       │   ├── hooks/              # Custom hooks específicos de la app
+    │       │   ├── layouts/            # Layouts de página
+    │       │   ├── pages/              # Páginas (mapean a routes)
+    │       │   ├── routes/             # Configuración de rutas
+    │       │   ├── services/           # Servicios: integración con backend y 3ros
+    │       │   │   ├── broker/         # Servicio de integración con brokers (IBKR, Alpaca)
+    │       │   │   ├── market-data/    # Servicio de datos de mercado
+    │       │   │   ├── indicators/     # Servicio de indicadores técnicos
+    │       │   │   ├── technical-analysis/
+    │       │   │   ├── fundamental-analysis/
+    │       │   │   ├── ai-analysis/    # Servicio de análisis IA
+    │       │   │   ├── institutional-analysis/
+    │       │   │   ├── news/           # Servicio de noticias
+    │       │   │   ├── strategies/     # Servicio de estrategias
+    │       │   │   └── signals/        # Servicio de señales (orquestación)
+    │       │   ├── store/              # Estado global (Zustand)
+    │       │   ├── styles/             # Estilos globales (TailwindCSS config)
+    │       │   ├── utils/              # Utilidades específicas de app
+    │       │   ├── types/              # Tipos específicos de app
+    │       │   ├── App.tsx
+    │       │   ├── main.tsx
+    │       │   └── vite-env.d.ts
+    │       ├── tests/
+    │       │   ├── unit/               # Tests unitarios de servicios y hooks
+    │       │   ├── components/         # Tests de componentes React
+    │       │   ├── integration/        # Tests de integración (feature workflows)
+    │       │   └── e2e/                # Tests end-to-end
+    │       ├── index.html
+    │       ├── package.json
+    │       ├── tsconfig.json
+    │       ├── vite.config.ts
+    │       └── README.md
+    │
+    └── rest-api/                       # Todos los proyectos REST API del portafolio
+        └── rest_api_inversions_drfic/  # Persistencia real y exposición de endpoints (Express + Node.js 22)
+            ├── src/
+            │   ├── routes/             # Endpoints REST por recurso
+            │   │   ├── dashboard/      # /api/dashboard/*
+            │   │   ├── signals/        # /api/signals/*
+            │   │   ├── execution/      # /api/execution/*
+            │   │   ├── audit/          # /api/audit/*
+            │   │   ├── brokers/        # /api/brokers/*
+            │   │   └── ...
+            │   ├── modules/            # Módulos de lógica de negocio por dominio
+            │   │   ├── signals/        # Orquestación de señales y confluencia
+            │   │   ├── execution/      # Aprobación, ejecución y fail-fast
+            │   │   ├── brokers/        # Integración con brokers IBKR y Alpaca
+            │   │   ├── strategies/     # Orquestación de estrategias
+            │   │   ├── audit/          # Historial y auditoría
+            │   │   └── ...
+            │   ├── repositories/       # Patrones base de acceso a datos
+            │   │   ├── baseRepository.ts
+            │   │   └── ...
+            │   ├── database/           # Capa de conexión y migraciones
+            │   │   ├── supabase/
+            │   │   │   ├── client.ts   # Cliente Supabase compartido
+            │   │   │   ├── migrations/ # Migraciones versionadas
+            │   │   │   └── scripts/    # Scripts de setup/rollback
+            │   │   └── mongodb/        # (opcional) para históricos y contextos IA
+            │   ├── middleware/         # Middlewares transversales
+            │   │   ├── authContext.ts  # JWT + RLS claims
+            │   │   ├── rbac.ts         # Control de acceso por rol
+            │   │   ├── mfaGuard.ts     # MFA
+            │   │   ├── rateLimit.ts    # Rate limiting
+            │   │   └── errorHandler.ts
+            │   ├── config/             # Configuración global
+            │   │   ├── environment.ts  # Bootstrap seguro
+            │   │   ├── envValidator.ts # Validación de .env
+            │   │   ├── dataGovernance.ts # Retención, partición
+            │   │   ├── dependencySlo.ts  # Políticas de resiliencia
+            │   │   └── ...
+            │   ├── domain/             # Lógica agnóstica de frameworks
+            │   │   ├── versioning.ts   # Optimistic locking
+            │   │   └── ...
+            │   ├── observability/      # Observabilidad transversal
+            │   │   ├── logger.ts       # Logs estructurados
+            │   │   ├── metrics.ts      # Métricas (decision_latency, etc)
+            │   │   ├── traces.ts       # Distributed tracing (trace_id, senal_id)
+            │   │   └── ...
+            │   ├── types/              # Tipos TypeScript del backend
+            │   ├── utils/              # Utilidades del backend
+            │   ├── main.ts             # Punto de entrada
+            │   └── app.ts              # Configuración de app (Express)
+            ├── tests/
+            │   ├── unit/               # Tests unitarios de servicios y repos
+            │   ├── integration/        # Tests de endpoints y workflows
+            │   └── e2e/                # Tests end-to-end
+            ├── DATABASE_CONFIG.yaml    # Configuración de BD por ambiente
+            ├── .env.example
+            ├── package.json
+            ├── tsconfig.json
+            └── README.md
+```
+
+**Capacidad de Escalado:**
+- ✅ Múltiples PWAs bajo `projects/pwa/` (ej: `inversions_app/`, `crypto_portfolio_app/`, etc)
+- ✅ Múltiples REST APIs bajo `projects/rest-api/` (ej: `rest_api_inversions_drfic/`, `rest_api_reports/`, etc)
+- ✅ Código compartido centralizado en `projects/packages/` usado por todos
 │   │       ├── public/
 │   │       ├── data/                   # Contratos y modelos de referencia
 │   │       │   ├── supabase/
