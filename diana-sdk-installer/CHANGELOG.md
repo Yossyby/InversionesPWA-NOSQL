@@ -2,6 +2,17 @@
 
 All notable changes to this project are documented in this file.
 
+## v0.1.4 - 2026-05-13
+
+### Added
+- Added new Diana help action assets:
+	- `diana.help.prompt.md`
+	- `diana.help.agent.md`
+- `diana.help` now provides command syntax guidance, SDD tutorial flow, and sync tutorial.
+
+### Changed
+- Installer package now ships the new help assets so students get `/diana.help` after `diana init`.
+
 ## v0.1.3 - 2026-05-13
 
 ### Added

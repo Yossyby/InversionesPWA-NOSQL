@@ -29,3 +29,7 @@ uvx --from git+https://github.com/UltraFIC/ai-dr.fic.git diana init
 Incluye soporte de sincronizacion de tareas Speckit -> Diana TEAM:
 - Prompt/agent: `diana.sync`
 - Script local: `.drfic/diana-sdk/sdk/diana/scripts/powershell/diana-sync-team.ps1`
+
+Incluye centro de ayuda de Diana:
+- Prompt/agent: `diana.help`
+- Cobertura: sintaxis de comandos, tutorial SDD y guia de sincronizacion.
