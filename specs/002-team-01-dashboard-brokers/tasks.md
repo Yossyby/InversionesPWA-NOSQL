@@ -1,4 +1,4 @@
-﻿# Tasks: Dashboard de Brokers TEAM-01
+# Tasks: Dashboard de Brokers TEAM-01
 
 **Input**: Documentos de diseno desde `specs/002-team-01-dashboard-brokers/`
 **Prerequisites**: `plan.md`, `spec.md`
@@ -121,8 +121,8 @@
 
 ### Tests for User Story 1
 
-- [ ] T039 [P] [US1] Tests unitarios para confluenceEngine y signalApi en `projects/rest-api/rest_api_inversions_drfic/tests/unit/signals/confluenceEngine.test.ts` y `projects/rest-api/rest_api_inversions_drfic/tests/unit/signals/signalApi.test.ts`
-- [ ] T040 [P] [US1] Tests de componentes React para MainDashboard, CoreSelector, SignalOverlay y ExplainabilityTable en `projects/pwa/inversions_app/tests/components/dashboard/`
+- [X] T039 [P] [US1] Tests unitarios para confluenceEngine y signalApi en `projects/rest-api/rest_api_inversions_drfic/tests/unit/signals/confluenceEngine.test.ts` y `projects/rest-api/rest_api_inversions_drfic/tests/unit/signals/signalApi.test.ts`
+- [X] T040 [P] [US1] Tests de componentes React para MainDashboard, CoreSelector, SignalOverlay y ExplainabilityTable en `projects/pwa/inversions_app/tests/components/dashboard/`
 
 ---
 
@@ -289,6 +289,7 @@ Task: "T030 [US3] route operationDetail en projects/rest-api/rest_api_inversions
 - Todas las tareas usan formato estricto de checklist.
 - La trazabilidad canonica TEAM-01 se preserva por intencion funcional, no por reciclaje literal de IDs globales.
 - Si aparece conflicto entre implementacion actual y canon, prevalece constitucion + canon global + spec del feature.
+
 
 
 

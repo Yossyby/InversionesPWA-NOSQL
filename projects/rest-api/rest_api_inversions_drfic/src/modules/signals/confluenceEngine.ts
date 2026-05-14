@@ -40,7 +40,7 @@ const verdictWeights: Record<SignalDirection, number> = {
 };
 
 export function evaluateConfluence(sources: SourceConfig[], verdicts: SourceVerdict[]): ConfluenceResult {
-  const activeWeights = new Map(sources.map((source) => [source.id, source.weight]));
+  const activeWeights = new Map(sources.filter((source) => source.enabled).map((source) => [source.id, source.weight]));
 
   let weightedScore = 0;
   let totalWeight = 0;
@@ -111,3 +111,4 @@ export function buildDashboardConfluencePayload(
     cards
   };
 }
+
