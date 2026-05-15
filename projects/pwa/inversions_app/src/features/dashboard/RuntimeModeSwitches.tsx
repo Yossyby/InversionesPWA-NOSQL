@@ -4,6 +4,7 @@
 import React, { useState, useEffect } from "react";
 import { useSignalStore } from "../../store/signals";
 import { Wifi, WifiOff, Zap, AlertCircle } from "lucide-react";
+import { getAuthHeaders } from "../../services/signals/signalApi";
 
 interface RuntimeModeProps {
   onModeChange?: (
@@ -34,7 +35,10 @@ export const RuntimeModeSwitches: React.FC<RuntimeModeProps> = ({
 
       try {
         setConnStatus("checking");
-        const response = await fetch("/api/health", { signal: controller.signal });
+        const response = await fetch("/api/health", {
+          signal: controller.signal,
+          headers: getAuthHeaders(),
+        });
         setConnStatus(response.ok ? "connected" : "disconnected");
       } catch {
         setConnStatus("disconnected");
@@ -56,7 +60,10 @@ export const RuntimeModeSwitches: React.FC<RuntimeModeProps> = ({
     try {
       const response = await fetch("/api/runtime/mode", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...getAuthHeaders(),
+        },
         body: JSON.stringify({
           mode: newMode,
           operationalMode,
@@ -103,7 +110,10 @@ export const RuntimeModeSwitches: React.FC<RuntimeModeProps> = ({
     try {
       const response = await fetch("/api/runtime/mode", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...getAuthHeaders(),
+        },
         body: JSON.stringify({
           mode: runtimeMode,
           operationalMode: newOpMode,

@@ -3,6 +3,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useSignalStore } from "../../store/signals";
+import { getAuthHeaders } from "../../services/signals/signalApi";
 
 interface TimeframeOption {
   label: string;
@@ -73,7 +74,9 @@ export const TimeControls: React.FC<TimeControlsProps> = ({
 
         // FIC: Fetch capabilities from active broker (EN)
         // FIC: Obtener capacidades del broker activo (ES)
-        const response = await fetch("/api/brokers/capabilities");
+        const response = await fetch("/api/brokers/capabilities", {
+          headers: getAuthHeaders(),
+        });
         if (!response.ok) {
           return; // FIC: Use defaults on error
         }

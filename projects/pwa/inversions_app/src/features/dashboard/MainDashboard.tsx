@@ -34,6 +34,7 @@ const initialCores: CoreDefinition[] = [
 export function MainDashboard() {
   const isTestEnv = import.meta.env.MODE === "test";
   const [timeframe, setTimeframe] = useState("1d");
+  const [periodRange, setPeriodRange] = useState<{ startDate: Date; endDate: Date } | null>(null);
   const [instrumentsInput, setInstrumentsInput] = useState("AAPL,MSFT,NVDA,SPY");
   const [cores, setCores] = useState<CoreDefinition[]>(initialCores);
   const [loading, setLoading] = useState(false);
@@ -181,6 +182,7 @@ export function MainDashboard() {
               <TimeControls
                 symbol={selectedSymbol}
                 onTimeframeChange={(nextTimeframe) => setTimeframe(nextTimeframe)}
+                onPeriodChange={(_period, startDate, endDate) => setPeriodRange({ startDate, endDate })}
               />
             </div>
           </div>
@@ -220,7 +222,12 @@ export function MainDashboard() {
                 <WatchlistTree />
                 <div style={{ display: "grid", gap: "1rem" }}>
                   <div className="card" style={{ minHeight: 380 }}>
-                    <SuperChart symbol={selectedSymbol} timeframe={timeframe} />
+                    <SuperChart
+                      symbol={selectedSymbol}
+                      timeframe={timeframe}
+                      startDate={periodRange?.startDate}
+                      endDate={periodRange?.endDate}
+                    />
                   </div>
                   <ConfluenceSignalsTable symbol={selectedSymbol} />
                 </div>

@@ -4,12 +4,14 @@
 import React, { useEffect, useRef, useState } from "react";
 import {
   createChart,
+  createSeriesMarkers,
   CandlestickSeries,
   ColorType,
   IChartApi,
   ISeriesApi
 } from "lightweight-charts";
 import { useSignalStore } from "../../store/signals";
+import { getAuthHeaders } from "../../services/signals/signalApi";
 
 interface OHLC {
   time: string;
@@ -32,6 +34,8 @@ interface SignalMark {
 interface SuperChartProps {
   symbol?: string;
   timeframe?: string;
+  startDate?: Date;
+  endDate?: Date;
   onSelectSignal?: (signal: any) => void;
 }
 
@@ -40,6 +44,8 @@ interface SuperChartProps {
 export const SuperChart: React.FC<SuperChartProps> = ({
   symbol,
   timeframe = "1d",
+  startDate,
+  endDate,
   onSelectSignal,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -68,7 +74,7 @@ export const SuperChart: React.FC<SuperChartProps> = ({
           background: { type: ColorType.Solid, color: "#ffffff" },
         },
         width: containerRef.current.clientWidth,
-        height: containerRef.current.clientHeight,
+        height: Math.max(containerRef.current.clientHeight, 340),
         timeScale: {
           timeVisible: true,
           secondsVisible: true,
@@ -95,7 +101,7 @@ export const SuperChart: React.FC<SuperChartProps> = ({
         if (containerRef.current && chartRef.current) {
           chartRef.current.applyOptions({
             width: containerRef.current.clientWidth,
-            height: containerRef.current.clientHeight,
+            height: Math.max(containerRef.current.clientHeight, 340),
           });
           chartRef.current.timeScale().fitContent();
         }
@@ -126,18 +132,30 @@ export const SuperChart: React.FC<SuperChartProps> = ({
         setError(null);
 
         const response = await fetch(
-          `/api/market-data/ohlc?symbol=${symbol}&timeframe=${timeframe}`
+          `/api/market-data/ohlc?symbol=${symbol}&timeframe=${timeframe}`,
+          { headers: getAuthHeaders() }
         );
         if (!response.ok) {
           throw new Error("Failed to load OHLC data");
         }
 
         const data = await response.json();
-        setCandles(data.candles || []);
+        const rawCandles: OHLC[] = data.candles || [];
+
+        // FIC: Apply period range filter client-side until backend supports date-range query.
+        // FIC: Aplicar filtro de rango de periodo en cliente mientras backend soporta query por fechas.
+        const filteredCandles = rawCandles.filter((candle) => {
+          const candleDate = new Date(Number(candle.time) * 1000);
+          if (startDate && candleDate < startDate) return false;
+          if (endDate && candleDate > endDate) return false;
+          return true;
+        });
+
+        setCandles(filteredCandles);
 
         // FIC: Set data to candlestick series (EN)
         // FIC: Establecer datos en serie de velas (ES)
-        candleSeriesRef.current!.setData(data.candles || []);
+        candleSeriesRef.current!.setData(filteredCandles);
         chartRef.current!.timeScale().fitContent();
       } catch (err) {
         setError((err as Error).message);
@@ -148,7 +166,7 @@ export const SuperChart: React.FC<SuperChartProps> = ({
     };
 
     loadOHLC();
-  }, [symbol, timeframe]);
+  }, [symbol, timeframe, startDate, endDate]);
 
   // FIC: Load signals overlay (EN)
   // FIC: Cargar overlay de señales (ES)
@@ -158,7 +176,8 @@ export const SuperChart: React.FC<SuperChartProps> = ({
     const loadSignals = async () => {
       try {
         const response = await fetch(
-          `/api/signals/confluence?symbol=${symbol}`
+          `/api/signals/confluence?symbol=${symbol}`,
+          { headers: getAuthHeaders() }
         );
         if (!response.ok) {
           throw new Error("Failed to load signals");
@@ -180,7 +199,7 @@ export const SuperChart: React.FC<SuperChartProps> = ({
 
         // FIC: Set markers on series (EN)
         // FIC: Establecer marcadores en serie (ES)
-        (candleSeriesRef.current as any).setMarkers(signalMarks);
+        createSeriesMarkers(candleSeriesRef.current as any, signalMarks as any);
 
         // FIC: Store for later reference (EN)
         // FIC: Guardar para referencia posterior (ES)
@@ -213,7 +232,7 @@ export const SuperChart: React.FC<SuperChartProps> = ({
       return mark;
     });
 
-    (candleSeriesRef.current as any).setMarkers(relevantSignals);
+    createSeriesMarkers(candleSeriesRef.current as any, relevantSignals as any);
   }, [selectedSignal, signals]);
 
   if (error) {
@@ -241,7 +260,7 @@ export const SuperChart: React.FC<SuperChartProps> = ({
       <div
         ref={containerRef}
         className="flex-1 w-full"
-        style={{ position: "relative" }}
+        style={{ position: "relative", minHeight: 340 }}
       />
 
       {/* FIC: Chart controls footer (EN) */}

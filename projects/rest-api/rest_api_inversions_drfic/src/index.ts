@@ -60,6 +60,10 @@ app.get("/health", (_req, res) => {
   res.status(200).json({ status: "ok" });
 });
 
+app.get("/api/health", (_req, res) => {
+  res.status(200).json({ status: "ok" });
+});
+
 const port = Number(process.env.PORT ?? 3000);
 
 app.listen(port, () => {

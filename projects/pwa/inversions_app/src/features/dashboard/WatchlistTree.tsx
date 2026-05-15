@@ -4,6 +4,7 @@
 import React, { useState, useEffect } from "react";
 import { ChevronRight, Star, Plus, X } from "lucide-react";
 import { useSignalStore } from "../../store/signals";
+import { getAuthHeaders } from "../../services/signals/signalApi";
 
 interface WatchlistCategory {
   id: string;
@@ -143,7 +144,9 @@ export const WatchlistTree: React.FC = () => {
 
         // FIC: Fetch catalog categories (EN)
         // FIC: Obtener categorías del catálogo (ES)
-        const categoriesResponse = await fetch("/api/catalogs/instruments");
+        const categoriesResponse = await fetch("/api/catalogs/instruments", {
+          headers: getAuthHeaders(),
+        });
         if (!categoriesResponse.ok) {
           throw new Error("Failed to load instrument categories");
         }
@@ -151,7 +154,9 @@ export const WatchlistTree: React.FC = () => {
 
         // FIC: Fetch user watchlist items (EN)
         // FIC: Obtener items de watchlist del usuario (ES)
-        const watchlistResponse = await fetch("/api/watchlist");
+        const watchlistResponse = await fetch("/api/watchlist", {
+          headers: getAuthHeaders(),
+        });
         if (!watchlistResponse.ok) {
           throw new Error("Failed to load watchlist");
         }
@@ -202,7 +207,10 @@ export const WatchlistTree: React.FC = () => {
     try {
       const response = await fetch("/api/watchlist", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...getAuthHeaders(),
+        },
         body: JSON.stringify({
           symbol,
           category: categoryId,
@@ -226,6 +234,7 @@ export const WatchlistTree: React.FC = () => {
     try {
       const response = await fetch(`/api/watchlist/${itemId}`, {
         method: "DELETE",
+        headers: getAuthHeaders(),
       });
 
       if (!response.ok) {

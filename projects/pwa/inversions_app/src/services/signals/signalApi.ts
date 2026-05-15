@@ -90,7 +90,7 @@ interface ApiErrorPayload {
 
 const API_BASE = "/api/signals";
 
-function buildAuthHeaders(): Record<string, string> {
+export function getAuthHeaders(): Record<string, string> {
   const headers: Record<string, string> = {};
   const storageToken =
     typeof window !== "undefined" ? window.localStorage.getItem("inversions.dev.token") ?? undefined : undefined;
@@ -109,7 +109,7 @@ export async function evaluateSignal(payload: EvaluateSignalRequest): Promise<Ev
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      ...buildAuthHeaders()
+      ...getAuthHeaders()
     },
     body: JSON.stringify(payload)
   });
@@ -124,7 +124,7 @@ export async function evaluateSignal(payload: EvaluateSignalRequest): Promise<Ev
 export async function getSignalDetails(signalId: string): Promise<SignalDetailsResponse> {
   const response = await fetch(`${API_BASE}/${signalId}/details`, {
     headers: {
-      ...buildAuthHeaders()
+      ...getAuthHeaders()
     }
   });
 
@@ -150,7 +150,7 @@ export async function getDashboardOrchestrator(
 
   const response = await fetch(`/api/dashboard/orchestrator?${query}`, {
     headers: {
-      ...buildAuthHeaders()
+      ...getAuthHeaders()
     }
   });
 

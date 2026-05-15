@@ -54,7 +54,11 @@ function isValidRole(role: string | undefined): role is UserRole {
 }
 
 export function authContextMiddleware(req: Request, res: Response, next: NextFunction): void {
-  if (process.env.AUTH_BYPASS === "true") {
+  const nodeEnv = process.env.NODE_ENV ?? "development";
+  const authBypass = process.env.AUTH_BYPASS;
+  const shouldBypassAuth = authBypass === "true" || (authBypass == null && nodeEnv === "development");
+
+  if (shouldBypassAuth) {
     req.authContext = {
       userId: process.env.AUTH_BYPASS_USER_ID ?? "dev-user",
       email: process.env.AUTH_BYPASS_EMAIL ?? "dev@local",

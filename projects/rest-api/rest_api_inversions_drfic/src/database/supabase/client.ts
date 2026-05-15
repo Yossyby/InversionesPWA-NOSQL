@@ -7,6 +7,7 @@
  */
 
 import { createClient } from "@supabase/supabase-js";
+import ws from "ws";
 
 const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const supabaseServiceKey =
@@ -54,6 +55,11 @@ export const supabaseClient = createClient(
       // FIC: Deshabilitar actualización automática para operaciones de rol de servicio
       autoRefreshToken: false,
       persistSession: false,
+    },
+    realtime: {
+      // FIC: Use ws transport for Node.js < 22
+      // FIC: Usar transporte ws para Node.js < 22
+      transport: ws as any,
     },
   }
 );
