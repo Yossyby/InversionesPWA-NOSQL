@@ -19,5 +19,6 @@ Thumbs.db
 *.swp
 .vscode/
 .idea/
+.claude/
 
 .tmp-ai-drfic/

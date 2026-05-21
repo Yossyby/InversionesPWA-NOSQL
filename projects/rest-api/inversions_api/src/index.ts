@@ -20,6 +20,14 @@ import { instrumentsCatalogRouter } from "./routes/catalogs/instruments";
 import { brokerCapabilitiesRouter } from "./routes/brokers/capabilities";
 import { marketDataOhlcRouter } from "./routes/market-data/ohlc";
 import { indicatorsCatalogRouter } from "./routes/indicators/catalog";
+import { rsiRouter } from "./routes/indicators/rsi";
+import { macdRouter } from "./routes/indicators/macd";
+import { emaRouter } from "./routes/indicators/ema";
+import { adxRouter } from "./routes/indicators/adx";
+import { bollingerRouter } from "./routes/indicators/bollinger";
+import { indicatorsConfluenceRouter } from "./routes/indicators/confluence";
+import { indicatorsHealthRouter } from "./routes/indicators/health";
+import { chatExplainRouter } from "./routes/indicators/chatExplain";
 
 const envValidation = validateEnvironment();
 if (!envValidation.isValid) {
@@ -55,6 +63,14 @@ app.use("/api/catalogs", instrumentsCatalogRouter);
 app.use("/api/brokers", brokerCapabilitiesRouter);
 app.use("/api/market-data", marketDataOhlcRouter);
 app.use("/api/indicators", indicatorsCatalogRouter);
+app.use("/api/indicators", rsiRouter);
+app.use("/api/indicators", macdRouter);
+app.use("/api/indicators", emaRouter);
+app.use("/api/indicators", adxRouter);
+app.use("/api/indicators", bollingerRouter);
+app.use("/api/indicators", indicatorsConfluenceRouter);
+app.use("/api/indicators", indicatorsHealthRouter);
+app.use("/api/chat", chatExplainRouter);
 
 app.get("/health", (_req, res) => {
   res.status(200).json({ status: "ok" });
