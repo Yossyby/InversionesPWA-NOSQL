@@ -20,6 +20,7 @@ import { instrumentsCatalogRouter } from "./routes/catalogs/instruments";
 import { brokerCapabilitiesRouter } from "./routes/brokers/capabilities";
 import { marketDataOhlcRouter } from "./routes/market-data/ohlc";
 import { indicatorsCatalogRouter } from "./routes/indicators/catalog";
+import newsSentimentRouter from './routes/news/sentiment';
 
 const envValidation = validateEnvironment();
 if (!envValidation.isValid) {
@@ -55,6 +56,7 @@ app.use("/api/catalogs", instrumentsCatalogRouter);
 app.use("/api/brokers", brokerCapabilitiesRouter);
 app.use("/api/market-data", marketDataOhlcRouter);
 app.use("/api/indicators", indicatorsCatalogRouter);
+app.use("/api/news", newsSentimentRouter);
 
 app.get("/health", (_req, res) => {
   res.status(200).json({ status: "ok" });
