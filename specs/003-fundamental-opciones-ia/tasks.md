@@ -62,19 +62,19 @@ Fase 7 (T171)
 ### Tareas
 
 - [x] T001-P049 [P] Definir SLI/SLO de disponibilidad en backend/src/observability/availabilitySlo.ts
-  - [ ] T001a Crear estructura de tipos TypeScript para SLI/SLO (uptime %, latency p99, error rate)
-  - [ ] T001b Implementar colector de métricas de disponibilidad desde logs de operación
-  - [ ] T001c Definir umbrales de alerta (crítico > 99.5%, warning 99.0%)
-  - [ ] T001d Documentar modelo de cálculo de disponibilidad en OBSERVABILITY_MODEL.md
+  - [x] T001a Crear estructura de tipos TypeScript para SLI/SLO (uptime %, latency p99, error rate)
+  - [x] T001b Implementar colector de métricas de disponibilidad desde logs de operación
+  - [x] T001c Definir umbrales de alerta (crítico > 99.5%, warning 99.0%)
+  - [x] T001d Documentar modelo de cálculo de disponibilidad en OBSERVABILITY_MODEL.md
   - **Criterios de Aceptación**: 
     - SLOs tipificados y auditables en código
     - Exporta métricas en formato Prometheus-compatible
 
 - [x] T002-P050 Consolidación mensual de disponibilidad en backend/src/jobs/monthlyAvailabilityReport.ts
-  - [ ] T002a Crear job batch que ejecuta fin de mes
-  - [ ] T002b Agregar métricas diarias en tabla Supabase: monthly_availability_report
-  - [ ] T002c Generar resumen PDF/JSON: uptime total, incidentes, duración promedio
-  - [ ] T002d Implementar notificación a stakeholders (email, Slack)
+  - [x] T002a Crear job batch que ejecuta fin de mes
+  - [x] T002b Agregar métricas diarias en tabla Supabase: monthly_availability_report
+  - [x] T002c Generar resumen PDF/JSON: uptime total, incidentes, duración promedio
+  - [x] T002d Implementar notificación a stakeholders (email, Slack)
   - **Criterios de Aceptación**:
     - Job produce reporte determinístico, idéntico en re-ejecución
     - Almacenado y auditable para cumplimiento
