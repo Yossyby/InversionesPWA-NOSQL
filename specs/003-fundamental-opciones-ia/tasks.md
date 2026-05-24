@@ -89,36 +89,36 @@ Fase 7 (T171)
 
 ### Tareas
 
-- [ ] T003-T077 Definir contrato de parámetros de análisis fundamental en backend/src/modules/fundamental/fundamentalSourceContract.ts
-  - [ ] T003a Crear tipos TypeScript para cada métrica: MarketCapData, SalesData, DividendData, PriceHistory, FinancialRatio (ROE, P/E), EmployeeCount, Beta, EPS, SectorClassification, CountryCode
-  - [ ] T003b Definir campos obligatorios vs opcionales, precisión numérica (decimales)
-  - [ ] T003c Incluir metadatos: sourceId, fetchTimestamp, dataVersion, assumptions (volatility calculation method, lookback period, etc.)
-  - [ ] T003d Documentar esquema JSON en backend/src/modules/fundamental/schemas/fundamentalAnalysis.schema.json
-  - [ ] T003e Crear validador Zod/TypeBox para runtime validation de ingestas
+- [x] T003-T077 Definir contrato de parámetros de análisis fundamental en backend/src/modules/fundamental/fundamentalSourceContract.ts
+  - [x] T003a Crear tipos TypeScript para cada métrica: MarketCapData, SalesData, DividendData, PriceHistory, FinancialRatio (ROE, P/E), EmployeeCount, Beta, EPS, SectorClassification, CountryCode
+  - [x] T003b Definir campos obligatorios vs opcionales, precisión numérica (decimales)
+  - [x] T003c Incluir metadatos: sourceId, fetchTimestamp, dataVersion, assumptions (volatility calculation method, lookback period, etc.)
+  - [x] T003d Documentar esquema JSON en backend/src/modules/fundamental/schemas/fundamentalAnalysis.schema.json
+  - [x] T003e Crear validador Zod/TypeBox para runtime validation de ingestas
   - **Criterios de Aceptación**:
     - Contrato preserva integridad de datos (no trunca precisión de precios/ratios)
     - Validación rechaza > 5% datos faltantes en métricas críticas (precio, vol)
     - Schema versionado (v1.0) en git, changelog para compatibilidad backward
 
-- [ ] T004-T078 [P] Implementar servicio de integración con fuentes externas en backend/src/modules/fundamental/fundamentalDataService.ts
-  - [ ] T004a Crear abstracción DataSource para Finviz, Yahoo Finance, Alphavantage (interface PluggableSource)
-  - [ ] T004b Implementar caché en Supabase: tabla fundamental_data_cache con TTL por tipo (precio: 5min, ratios: 1h)
-  - [ ] T004c Implementar rate limiter: máx 60 req/min por fuente externa, backoff exponencial
-  - [ ] T004d Implementar fallback: si Finviz falla, intenta Yahoo; si ambas fallan, sirve caché stale con disclaimer
-  - [ ] T004e Logging de ingestión: auditTrail.log(source, success/fail, cost, timestamp)
-  - [ ] T004f Unit tests: validar rate limit rejection, caché hit/miss, fallback chain
+- [x] T004-T078 [P] Implementar servicio de integración con fuentes externas en backend/src/modules/fundamental/fundamentalDataService.ts
+  - [x] T004a Crear abstracción DataSource para Finviz, Yahoo Finance, Alphavantage (interface PluggableSource)
+  - [x] T004b Implementar caché en Supabase: tabla fundamental_data_cache con TTL por tipo (precio: 5min, ratios: 1h)
+  - [x] T004c Implementar rate limiter: máx 60 req/min por fuente externa, backoff exponencial
+  - [x] T004d Implementar fallback: si Finviz falla, intenta Yahoo; si ambas fallan, sirve caché stale con disclaimer
+  - [x] T004e Logging de ingestión: auditTrail.log(source, success/fail, cost, timestamp)
+  - [x] T004f Unit tests: validar rate limit rejection, caché hit/miss, fallback chain
   - **Criterios de Aceptación**:
     - Resuelve 100+ tickers en < 2s en caché hit
     - Fallback cache sirve data con timestamp explícito (ej: "data de hace 3h")
     - SLA: 99% uptime con al menos 2 fuentes activas
 
-- [ ] T005-T079 [P] Implementar motor de viabilidad de inversión fundamental en backend/src/modules/fundamental/viabilityEngine.ts
-  - [ ] T005a Definir scorecard ponderado: Market Cap (15%), Dividend History (10%), ROE (20%), P/E Ratio (15%), Volatility (20%), Beta (10%), EPS Growth (10%)
-  - [ ] T005b Crear función normalize(metric, benchmarkMin, benchmarkMax) → [0,1]
-  - [ ] T005c Implementar scoring: viable si score >= 0.65, neutral si 0.4-0.64, no_viable < 0.4
-  - [ ] T005d Generar justificación por atributo: "Market Cap es 150B (excelente), P/E es 45 (elevado pero aceptable para sector tech)"
-  - [ ] T005e Incluir confidence score basado en completitud de datos: 100% datos → confidence=HIGH, 70-99% → MEDIUM, <70% → LOW
-  - [ ] T005f Unit tests: scorecard determinístico, justificaciones coherentes, boundary cases (empresas penny, IPO reciente)
+- [x] T005-T079 [P] Implementar motor de viabilidad de inversión fundamental en backend/src/modules/fundamental/viabilityEngine.ts
+  - [x] T005a Definir scorecard ponderado: Market Cap (15%), Dividend History (10%), ROE (20%), P/E Ratio (15%), Volatility (20%), Beta (10%), EPS Growth (10%)
+  - [x] T005b Crear función normalize(metric, benchmarkMin, benchmarkMax) → [0,1]
+  - [x] T005c Implementar scoring: viable si score >= 0.65, neutral si 0.4-0.64, no_viable < 0.4
+  - [x] T005d Generar justificación por atributo: "Market Cap es 150B (excelente), P/E es 45 (elevado pero aceptable para sector tech)"
+  - [x] T005e Incluir confidence score basado en completitud de datos: 100% datos → confidence=HIGH, 70-99% → MEDIUM, <70% → LOW
+  - [x] T005f Unit tests: scorecard determinístico, justificaciones coherentes, boundary cases (empresas penny, IPO reciente)
   - **Criterios de Aceptación**:
     - Dado mismo dataset, engine retorna idéntico score y clasificación en re-ejecución
     - Justificación comprensible sin jerga técnica innecesaria
