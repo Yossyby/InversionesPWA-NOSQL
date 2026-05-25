@@ -4,9 +4,9 @@
 **Proyecto**: diana-inversions
 **Equipo**: TEAM-03
 **Fuente**: 001-inv-tasks.md + team-task-allocation.md
-**Última Sincronización**: 2026-05-25 12:05 UTC (diana.sync mode=apply - FASE 4 SINCRONIZADO)
+**Última Sincronización**: 2026-05-25 15:35 UTC (diana.sync mode=apply - FASE 5 SINCRONIZADO)
 **Feature Sync**: 003-fundamental-opciones-ia
-**Estado**: ✅ 15/17 Completadas (88%), 1/17 Pendiente (6%), 1/18 Extensión (T090)
+**Estado**: ✅ 16/18 Completadas (89%), 1/18 Pendiente (6%), 1/18 Extensión
 
 ## Tareas (literal del canon, con checkbox)
 
@@ -25,5 +25,5 @@
 - [x] T087 Implementar motor de simulación temporal de estrategias en backend/src/modules/strategies/simulationEngine.ts que proyecta P&L a lo largo del tiempo considerando theta decay, movimiento del subyacente y volatilidad implícita
 - [x] T088 Implementar servicio de alertas en tiempo real y ejecución de stop-loss en backend/src/modules/strategies/alertService.ts que monitorea posiciones abiertas, emite alertas configurables y puede solicitar cierre de operación vía broker
 - [x] T089 Implementar motor comparador de estrategias en backend/src/modules/strategies/strategyComparator.ts que evalúa P&L esperado, riesgo y contexto de todos los cores activos para recomendar la estrategia más adecuada
-- [ ] T090 Implementar chat IA de análisis fundamental y estrategias en backend/src/modules/ai/fundamentalCopilotChat.ts con acceso de solo lectura a Supabase sobre tablas de empresas, métricas fundamentales y posiciones de estrategias
+- [x] T090 Implementar chat IA de análisis fundamental y estrategias en backend/src/modules/ai/fundamentalCopilotChat.ts con acceso de solo lectura a Supabase sobre tablas de empresas, métricas fundamentales y posiciones de estrategias
 - [ ] T171 Ejecutar ajuste de TEAM-03 al estándar transversal en backend/src/modules/strategies/options/ y backend/src/modules/strategies/strategyComparator.ts (long/short call-put)

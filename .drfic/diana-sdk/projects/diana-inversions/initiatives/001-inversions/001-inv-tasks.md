@@ -244,7 +244,7 @@ Tareas:
 - [x] T089 Implementar motor comparador de estrategias en backend/src/modules/strategies/strategyComparator.ts que evalúa P&L esperado, riesgo y contexto de todos los cores activos para recomendar la estrategia más adecuada
 
 ### Chat IA
-- [ ] T090 Implementar chat IA de análisis fundamental y estrategias en backend/src/modules/ai/fundamentalCopilotChat.ts con acceso de solo lectura a Supabase sobre tablas de empresas, métricas fundamentales y posiciones de estrategias
+- [x] T090 Implementar chat IA de análisis fundamental y estrategias en backend/src/modules/ai/fundamentalCopilotChat.ts con acceso de solo lectura a Supabase sobre tablas de empresas, métricas fundamentales y posiciones de estrategias
 
 ---
 
