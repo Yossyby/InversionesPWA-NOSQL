@@ -94,3 +94,38 @@ export interface StrategyComparison {
   alternatives: OptionStrategyOutput[];
   rationale: string;
 }
+
+/**
+ * Simplified contract for option strategies (test/API compatibility)
+ * Maps to OptionStrategyInput with simplified field names
+ */
+export interface OptionStrategyContract {
+  // Core parameters
+  ticker: string;
+  optionType: "call" | "put" | "CALL" | "PUT";
+  direction: "long" | "short" | "LONG" | "SHORT";
+  
+  // Price parameters
+  strikePrice: number;
+  currentPrice?: number; // Optional for test compatibility
+  
+  // Time parameters
+  expirationDate: string; // ISO 8601
+  daysToExpiration?: number; // Optional
+  
+  // Premium and quantity (simplified names)
+  premium: number; // Price per contract
+  quantity: number; // Number of contracts
+  
+  // Capital and risk
+  capitalAvailable?: number; // Alias for availableCapital
+  riskTolerance?: "low" | "medium" | "high" | "LOW" | "MEDIUM" | "HIGH";
+  
+  // Optional
+  assumptions?: {
+    impliedVolatility?: number; // as percentage (e.g., 25 for 25%)
+    timeDecayModel?: TimeDecayModel; // LINEAR or EXPONENTIAL
+    interestRate?: number; // Annual rate, default 4%
+    expectedReturn?: number; // Expected daily return %
+  };
+}

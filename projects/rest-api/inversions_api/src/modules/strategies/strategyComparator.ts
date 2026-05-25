@@ -10,10 +10,19 @@
  */
 
 import type { OptionStrategyInput, OptionStrategyOutput } from "./optionsStrategyContract";
+import type { StrategyOutput } from "./standards/strategyOutputStandard";
 import { evaluateLongCall } from "./options/longCall";
 import { evaluateLongPut } from "./options/longPut";
 import { evaluateShortCall } from "./options/shortCall";
 import { evaluateShortPut } from "./options/shortPut";
+
+/**
+ * Result from comparing StrategyOutput items (for tests and ranking)
+ */
+export interface ComparisonResult {
+  chosen: StrategyOutput | null;
+  ranking: Array<{ strategy: StrategyOutput; score: number }>;
+}
 
 export interface StrategyRanking {
   strategy: OptionStrategyOutput;
@@ -32,9 +41,45 @@ export interface StrategyComparisonResult {
 }
 
 /**
- * Compare all four strategies and recommend the best one
+ * Compare strategies with overloaded signatures
+ * - Can accept StrategyOutput[] for ranking/comparison tests
+ * - Can accept OptionStrategyInput for full evaluation
  */
-export function compareStrategies(
+export function compareStrategies(items: StrategyOutput[] | OptionStrategyInput, viabilityScore?: number): ComparisonResult | StrategyComparisonResult {
+  // Handle StrategyOutput[] case (for tests and ranking)
+  if (Array.isArray(items)) {
+    const outputs = items as StrategyOutput[];
+    
+    if (outputs.length === 0) {
+      return {
+        chosen: null,
+        ranking: []
+      };
+    }
+
+    // Sort by confluencia_score descending
+    const sorted = [...outputs].sort((a, b) => b.confluencia_score - a.confluencia_score);
+    
+    // Create ranking with scores
+    const ranking = sorted.map((strategy) => ({
+      strategy,
+      score: strategy.confluencia_score
+    }));
+
+    return {
+      chosen: ranking.length > 0 ? ranking[0].strategy : null,
+      ranking
+    };
+  }
+
+  // Handle OptionStrategyInput case (original implementation)
+  return compareStrategiesOriginal(items as OptionStrategyInput, viabilityScore ?? 0.65);
+}
+
+/**
+ * Original compareStrategies implementation (refactored)
+ */
+function compareStrategiesOriginal(
   params: OptionStrategyInput,
   viabilityScore: number = 0.65 // Fundamental viability (0-1)
 ): StrategyComparisonResult {
