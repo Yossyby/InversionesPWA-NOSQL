@@ -4,6 +4,7 @@ import { initializeEnvironment } from "./config/environment";
 import { printValidationResult, validateEnvironment } from "./config/envValidator";
 import { createAuditHistoryRouter } from "./routes/audit/history";
 import { createOperationDetailRouter } from "./routes/audit/operationDetail";
+import { registerAuditRoutes } from "./routes/auditRoutes";
 import { createApprovalRouter } from "./routes/execution/approve";
 import { createExecutionRouter } from "./routes/execution/execute";
 import { AuditHistoryService } from "./modules/audit/historyService";
@@ -40,6 +41,9 @@ initializeEnvironment();
 
 const app = express();
 app.use(express.json());
+
+// T017-T020: Registrar rutas de auditoría y trazabilidad
+registerAuditRoutes(app);
 
 const auditHistoryService = new AuditHistoryService();
 const approvalService = new ApprovalService();
