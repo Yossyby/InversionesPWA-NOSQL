@@ -314,44 +314,44 @@ Fase 7 (T171)
 
 ### Tareas
 
-- [ ] T017-US4 [P] [US4] Crear auditoría trail completa de análisis fundamental en backend/src/modules/audit/fundamentalAnalysisAudit.ts
-  - [ ] T017a Crear tabla Supabase: fundamental_analysis_audit (id, ticker, snapshot_date, snapshot_data JSON, calculated_metrics JSON, viability_score, viability_classification, timestamp_calculated, user_id, assumptions JSON)
-  - [ ] T017b Integrar en T005 (viabilityEngine): antes de retornar score, guardar snapshot en audit table
-  - [ ] T017c Guardar snapshot_data: precios, ratios, vol, todo lo usado en cálculo
-  - [ ] T017d Guardar assumptions: "volatility_calc_method: daily_returns_60d", "benchmark_market_cap: 10B-500B"
-  - [ ] T017e Crear endpoint GET /api/team-03/audit/{ticker}/{dateIso} → retorn snapshot completo
-  - [ ] T017f Unit tests: snapshot contiene todos los campos necesarios, fecha matches timestamp
+- [x] T017-US4 [P] [US4] Crear auditoría trail completa de análisis fundamental en backend/src/modules/audit/fundamentalAnalysisAudit.ts
+  - [x] T017a Crear tabla Supabase: fundamental_analysis_audit (id, ticker, snapshot_date, snapshot_data JSON, calculated_metrics JSON, viability_score, viability_classification, timestamp_calculated, user_id, assumptions JSON)
+  - [x] T017b Integrar en T005 (viabilityEngine): antes de retornar score, guardar snapshot en audit table
+  - [x] T017c Guardar snapshot_data: precios, ratios, vol, todo lo usado en cálculo
+  - [x] T017d Guardar assumptions: "volatility_calc_method: daily_returns_60d", "benchmark_market_cap: 10B-500B"
+  - [x] T017e Crear endpoint GET /api/team-03/audit/{ticker}/{dateIso} → retorn snapshot completo
+  - [x] T017f Unit tests: snapshot contiene todos los campos necesarios, fecha matches timestamp
   - **Criterios de Aceptación**:
     - Snapshot es inmutable (NO UPDATE after creation)
     - Incluye metadata suficiente para regenerar análisis
 
-- [ ] T018-US4 [P] [US4] Implementar herramienta de validación determinística en backend/src/modules/audit/auditValidation.ts
-  - [ ] T018a Crear función validateDeterminism(ticker, originalDate) → { matches: bool, divergencePoint: string, original_score, recalculated_score }
-  - [ ] T018b Reconstituir snapshot de audit table, re-ejecutar viabilityEngine.score() con mismos datos
-  - [ ] T018c Comparar scores: si match exacto → passed, si diferente → identificar qué métrica divergió
-  - [ ] T018d Retornar: "PASSED: Scores idénticos (0.68)", o "DIVERGED: Original ROE metric 15.2%, recalculated 15.3% (data update)"
-  - [ ] T018e Crear endpoint GET /api/team-03/audit/{ticker}/{dateIso}/validate → ejecutar validación y retorna reporte
-  - [ ] T018f Unit tests: divergencia si engine logic cambia, match si datos y logic idénticos
+- [x] T018-US4 [P] [US4] Implementar herramienta de validación determinística en backend/src/modules/audit/auditValidation.ts
+  - [x] T018a Crear función validateDeterminism(ticker, originalDate) → { matches: bool, divergencePoint: string, original_score, recalculated_score }
+  - [x] T018b Reconstituir snapshot de audit table, re-ejecutar viabilityEngine.score() con mismos datos
+  - [x] T018c Comparar scores: si match exacto → passed, si diferente → identificar qué métrica divergió
+  - [x] T018d Retornar: "PASSED: Scores idénticos (0.68)", o "DIVERGED: Original ROE metric 15.2%, recalculated 15.3% (data update)"
+  - [x] T018e Crear endpoint GET /api/team-03/audit/{ticker}/{dateIso}/validate → ejecutar validación y retorna reporte
+  - [x] T018f Unit tests: divergencia si engine logic cambia, match si datos y logic idénticos
   - **Criterios de Aceptación**:
     - Validación reproduce resultados históricos > 99% de los casos
     - Identifica fuente de divergencia (data vs logic)
 
-- [ ] T019-US4 [P] [US4] Crear reporte de auditoría trazable en backend/src/modules/audit/auditReport.ts
-  - [ ] T019a Endpoint GET /api/team-03/audit-report?startDate=2026-05&endDate=2026-05 → lista análisis de período
-  - [ ] T019b Incluir: ticker, análisis_date, viability_classification, top_3_factors_justification, recalc_validation_status, user_who_requested
-  - [ ] T019c Generar PDF/CSV exportable para compliance
-  - [ ] T019d Validar que cada fila mapea a entry en fundamental_analysis_audit table
-  - [ ] T019e Unit tests: reporte incluye todos análisis del período, sin duplicados
+- [x] T019-US4 [P] [US4] Crear reporte de auditoría trazable en backend/src/modules/audit/auditReport.ts
+  - [x] T019a Endpoint GET /api/team-03/audit-report?startDate=2026-05&endDate=2026-05 → lista análisis de período
+  - [x] T019b Incluir: ticker, análisis_date, viability_classification, top_3_factors_justification, recalc_validation_status, user_who_requested
+  - [x] T019c Generar PDF/CSV exportable para compliance
+  - [x] T019d Validar que cada fila mapea a entry en fundamental_analysis_audit table
+  - [x] T019e Unit tests: reporte incluye todos análisis del período, sin duplicados
   - **Criterios de Aceptación**:
     - Reporte trazable a audit table
     - Exportable, legible para auditor no-técnico
 
-- [ ] T020-US4 [P] [US4] Implementar cadena de trazabilidad estrategia en backend/src/modules/audit/strategyRecommendationAudit.ts
-  - [ ] T020a Crear tabla Supabase: strategy_recommendation_audit (id, ticker, analysis_date, fundamental_viability_score, direction_hypothesis, comparator_results JSON, top_recommended_strategy, reasoning, timestamp, user_id)
-  - [ ] T020b Integrar en T089 (strategyComparator): guardar full ranking, reasoning para cada estrategia
-  - [ ] T020c Guardar: "Long Call ranked 1 (risk_adj_return 0.85), Long Put ranked 2 (0.62)"
-  - [ ] T020d Crear endpoint GET /api/team-03/audit/{ticker}/{dateIso}/strategy → retorn strategy selection audit
-  - [ ] T020e Unit tests: audit contiene todas estrategias evaluadas y sus scores
+- [x] T020-US4 [P] [US4] Implementar cadena de trazabilidad estrategia en backend/src/modules/audit/strategyRecommendationAudit.ts
+  - [x] T020a Crear tabla Supabase: strategy_recommendation_audit (id, ticker, analysis_date, fundamental_viability_score, direction_hypothesis, comparator_results JSON, top_recommended_strategy, reasoning, timestamp, user_id)
+  - [x] T020b Integrar en T089 (strategyComparator): guardar full ranking, reasoning para cada estrategia
+  - [x] T020c Guardar: "Long Call ranked 1 (risk_adj_return 0.85), Long Put ranked 2 (0.62)"
+  - [x] T020d Crear endpoint GET /api/team-03/audit/{ticker}/{dateIso}/strategy → retorn strategy selection audit
+  - [x] T020e Unit tests: audit contiene todas estrategias evaluadas y sus scores
   - **Criterios de Aceptación**:
     - Estrategia recomendada es determinística dada mismos datos + direction
     - Ranking es reproducible
