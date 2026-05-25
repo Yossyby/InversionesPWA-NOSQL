@@ -365,65 +365,65 @@ Fase 7 (T171)
 
 ### Tareas
 
-- [ ] T021-T171 Ejecutar ajuste de TEAM-03 al estándar transversal en backend/src/modules/strategies/options/ y backend/src/modules/strategies/strategyComparator.ts
-  - [ ] T021a Validar naming consistency: snake_case para archivos, camelCase para variables JS
-  - [ ] T021b Implementar error handling estandarizado: try-catch → log → retorn { error: string, code: string, status: number }
-  - [ ] T021c Validar tipos TypeScript: all functions have explicit return types, no any
-  - [ ] T021d Implementar logging estandarizado: uso de logger.info/warn/error con structured JSON (timestamp, action, actor, result)
-  - [ ] T021e Validar auth checks: todos endpoints /api/team-03/* requieren JWT valid + scope: "team-03:read"
-  - [ ] T021f Aplicar middleware auth a T080, T081, T090, endpoints de auditoría
-  - [ ] T021g Unit tests para cada estrategia: validar que siguen interfaz common IStrategy
-  - [ ] T021h Integration tests: full chain T077 → T079 → T089 → recomendación válida
+- [x] T021-T171 Ejecutar ajuste de TEAM-03 al estándar transversal en backend/src/modules/strategies/options/ y backend/src/modules/strategies/strategyComparator.ts
+  - [x] T021a Validar naming consistency: snake_case para archivos, camelCase para variables JS
+  - [x] T021b Implementar error handling estandarizado: try-catch → log → retorn { error: string, code: string, status: number }
+  - [x] T021c Validar tipos TypeScript: all functions have explicit return types, no any
+  - [x] T021d Implementar logging estandarizado: uso de logger.info/warn/error con structured JSON (timestamp, action, actor, result)
+  - [x] T021e Validar auth checks: todos endpoints /api/team-03/* requieren JWT valid + scope: "team-03:read"
+  - [x] T021f Aplicar middleware auth a T080, T081, T090, endpoints de auditoría
+  - [x] T021g Unit tests para cada estrategia: validar que siguen interfaz common IStrategy
+  - [x] T021h Integration tests: full chain T077 → T079 → T089 → recomendación válida
   - **Criterios de Aceptación**:
     - Todos archivos cumple standards transversales
     - All endpoints autenticados
     - Comportamiento coherente entre estrategias
 
-- [ ] T022-Polish [P] Validación sobredeterminada entre análisis, estrategia y explicación
-  - [ ] T022a Crear suite de integration tests: 20+ cases con tickers reales (AAPL, MSFT, TSLA, etc.)
-  - [ ] T022b Para cada case: ejecutar T079 (viability) → T089 (strategy) → T090 (chat) → validar consistencia
-  - [ ] T022c Chequeo: si viability NO_VIABLE, strategy debe ser NONE o HOLD; nunca recomenda Long Call
-  - [ ] T022d Chequeo: Chat IA justifica decisión de estrategia: "Short Call recomendado porque volatility 35% > threshold 25%"
-  - [ ] T022e Chequeo: explicación IA menciona max loss, max profit, break-even con números correctos
-  - [ ] T022f Logging de inconsistencias: auditTrail.warn si detecta incoherencia
+- [x] T022-Polish [P] Validación sobredeterminada entre análisis, estrategia y explicación
+  - [x] T022a Crear suite de integration tests: 20+ cases con tickers reales (AAPL, MSFT, TSLA, etc.)
+  - [x] T022b Para cada case: ejecutar T079 (viability) → T089 (strategy) → T090 (chat) → validar consistencia
+  - [x] T022c Chequeo: si viability NO_VIABLE, strategy debe ser NONE o HOLD; nunca recomenda Long Call
+  - [x] T022d Chequeo: Chat IA justifica decisión de estrategia: "Short Call recomendado porque volatility 35% > threshold 25%"
+  - [x] T022e Chequeo: explicación IA menciona max loss, max profit, break-even con números correctos
+  - [x] T022f Logging de inconsistencias: auditTrail.warn si detecta incoherencia
   - **Criterios de Aceptación**:
     - 100% de integration tests pasan
     - Cero inconsistencias detectadas en validación sobredeterminada
 
-- [ ] T023-Polish [P] Verificación de trazabilidad cada resultado → evidencia de cálculo
-  - [ ] T023a Para cada resultado (viability score, strategy rec, P&L scenario), implementar función trace() → retorna breadcrumb de cálculos
-  - [ ] T023b Ej: trace(viability_score=0.68) → [Market_Cap norm: 0.72, Dividend norm: 0.65, ... ] → score = weighted_avg()
-  - [ ] T023c Integrar trace en endpoints de auditoría: /api/team-03/audit/{ticker}/trace?result_type=viability_score
-  - [ ] T023d Unit tests: trace es determinístico, reproduces cálculo paso a paso
+- [x] T023-Polish [P] Verificación de trazabilidad cada resultado → evidencia de cálculo
+  - [x] T023a Para cada resultado (viability score, strategy rec, P&L scenario), implementar función trace() → retorna breadcrumb de cálculos
+  - [x] T023b Ej: trace(viability_score=0.68) → [Market_Cap norm: 0.72, Dividend norm: 0.65, ... ] → score = weighted_avg()
+  - [x] T023c Integrar trace en endpoints de auditoría: /api/team-03/audit/{ticker}/trace?result_type=viability_score
+  - [x] T023d Unit tests: trace es determinístico, reproduces cálculo paso a paso
   - **Criterios de Aceptación**:
     - Trace disponible para auditar cualquier resultado
     - Mathematically verifiable
 
-- [ ] T024-Polish Asegurar que plan respeta modelo semi-automático y control humano
-  - [ ] T024a Chequeo: No hay auto-trading, todas operaciones requieren aprobación humana explícita
-  - [ ] T024b Chequeo: Todas recomendaciones incluyen disclaimer: "Esto NO es asesoramiento financiero. Consulta con profesional."
-  - [ ] T024c Chequeo: Decisiones de cierre (T088 stop-loss) generan REQUEST, no ejecución automática
-  - [ ] T024d Chequeo: Chat IA NUNCA da señales de "Compra ahora", solo explica
-  - [ ] T024e Documentation: crear TEAM-03-GOVERNANCE.md explicando control points
+- [x] T024-Polish Asegurar que plan respeta modelo semi-automático y control humano
+  - [x] T024a Chequeo: No hay auto-trading, todas operaciones requieren aprobación humana explícita
+  - [x] T024b Chequeo: Todas recomendaciones incluyen disclaimer: "Esto NO es asesoramiento financiero. Consulta con profesional."
+  - [x] T024c Chequeo: Decisiones de cierre (T088 stop-loss) generan REQUEST, no ejecución automática
+  - [x] T024d Chequeo: Chat IA NUNCA da señales de "Compra ahora", solo explica
+  - [x] T024e Documentation: crear TEAM-03-GOVERNANCE.md explicando control points
   - **Criterios de Aceptación**:
     - Revisión manual confirma cero puntos de auto-trading
     - Disclaimers presentes en todas salidas
 
-- [ ] T025-Polish [P] Validar API contract y readiness para consumo multi-equipo
-  - [ ] T025a Generar OpenAPI 3.0 spec para todos endpoints TEAM-03: GET /fundamental/{ticker}, GET /screener/sp500, GET /audit/{ticker}/{date}, POST /chat
-  - [ ] T025b Validar que response JSON schemas pueden ser generados con Zod → JSON Schema
-  - [ ] T025c Incluir ejemplos en spec: sample request/response para cada endpoint
-  - [ ] T025d Versioning: x-api-version: 1.0 en todos responses
-  - [ ] T025e Crear documento TEAM-03-API-INTEGRATION.md para otros equipos (TEAM-01, TEAM-02)
-  - [ ] T025f Unit tests: spec validates contra real responses
+- [x] T025-Polish [P] Validar API contract y readiness para consumo multi-equipo
+  - [x] T025a Generar OpenAPI 3.0 spec para todos endpoints TEAM-03: GET /fundamental/{ticker}, GET /screener/sp500, GET /audit/{ticker}/{date}, POST /chat
+  - [x] T025b Validar que response JSON schemas pueden ser generados con Zod → JSON Schema
+  - [x] T025c Incluir ejemplos en spec: sample request/response para cada endpoint
+  - [x] T025d Versioning: x-api-version: 1.0 en todos responses
+  - [x] T025e Crear documento TEAM-03-API-INTEGRATION.md para otros equipos (TEAM-01, TEAM-02)
+  - [x] T025f Unit tests: spec validates contra real responses
   - **Criterios de Aceptación**:
     - OpenAPI spec completo y válido
     - Otros equipos pueden consumir API sin sorpresas
 
-- [ ] T026-Polish Crear checksheet final de readiness TEAM-03
-  - [ ] T026a Checklist: [ ] Canon Diana 18 tareas preservadas [ ] Subtareas Speckit expansión [ ] Test suite > 80% cobertura [ ] Auditoría implementada [ ] API documented [ ] Control humano validado [ ] Zero auto-trading [ ] Determinismo verificado
-  - [ ] T026b Reporte ejecutivo: Feature TEAM-03 operativo, cumple RFs, listos para integración
-  - [ ] T026c Documentar cualquier GAP o deuda técnica
+- [x] T026-Polish Crear checksheet final de readiness TEAM-03
+  - [x] T026a Checklist: [ ] Canon Diana 18 tareas preservadas [ ] Subtareas Speckit expansión [ ] Test suite > 80% cobertura [ ] Auditoría implementada [ ] API documented [ ] Control humano validado [ ] Zero auto-trading [ ] Determinismo verificado
+  - [x] T026b Reporte ejecutivo: Feature TEAM-03 operativo, cumple RFs, listos para integración
+  - [x] T026c Documentar cualquier GAP o deuda técnica
   - **Criterios de Aceptación**:
     - Checklist 100% green
     - Firma de go/no-go
