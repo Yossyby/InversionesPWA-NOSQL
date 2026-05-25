@@ -8,7 +8,7 @@
  * - Reconversión a opciones a medida que el tiempo pasa
  */
 
-import type { OptionStrategyInput, OptionStrategyOutput } from "./optionsStrategyContract";
+import type { OptionStrategyInput, OptionStrategyOutput, OptionStrategyContract } from "./optionsStrategyContract";
 import { evaluateLongCall } from "./options/longCall";
 import { evaluateLongPut } from "./options/longPut";
 import { evaluateShortCall } from "./options/shortCall";
@@ -52,14 +52,36 @@ export interface SimulationResult {
 
 /**
  * Simulate option strategy over time
+ * Can be called with just params and pricePathDaily for simple simulations
  */
 export function simulateStrategy(
-  params: OptionStrategyInput,
+  params: OptionStrategyInput | OptionStrategyContract,
   pricePathDaily: number[],
-  volatilityPathDaily: number[],
-  daysToSimulate: number
+  volatilityPathDaily?: number[],
+  daysToSimulate?: number
 ): SimulationResult {
-  const strategyType = `${params.direction}_${params.optionType}`;
+  // Normalize parameters to OptionStrategyInput format
+  const normalizedParams: OptionStrategyInput = {
+    ticker: params.ticker,
+    optionType: (params.optionType?.toUpperCase() as any) || "CALL",
+    direction: (params.direction?.toUpperCase() as any) || "LONG",
+    strikePrice: params.strikePrice,
+    currentPrice: (params as any).currentPrice || params.strikePrice,
+    expirationDate: params.expirationDate,
+    daysToExpiration: (params as any).daysToExpiration || 30,
+    premiumPerContract: ("premiumPerContract" in params) ? params.premiumPerContract : (params as any).premium || 0,
+    numberOfContracts: ("numberOfContracts" in params) ? params.numberOfContracts : (params as any).quantity || 1,
+    availableCapital: (params as any).capitalAvailable || (params as any).availableCapital || 10000,
+    riskTolerance: ((params as any).riskTolerance?.toUpperCase() as any) || "MEDIUM",
+    assumptions: params.assumptions || { impliedVolatility: 25 }
+  };
+  
+  // Use defaults if not provided
+  const assumptions = normalizedParams.assumptions || { impliedVolatility: 25 };
+  const volPath = volatilityPathDaily ?? Array(pricePathDaily.length).fill(assumptions.impliedVolatility ?? 25);
+  const simDays = daysToSimulate ?? pricePathDaily.length;
+  
+  const strategyType = `${normalizedParams.direction}_${normalizedParams.optionType}`;
   const dailyPoints: DailySimulationPoint[] = [];
   const pnlPath: number[] = [];
   
@@ -69,20 +91,20 @@ export function simulateStrategy(
   let breakevenDay: number | undefined;
   
   // Simulate each day
-  for (let day = 0; day < daysToSimulate && day < pricePathDaily.length; day++) {
+  for (let day = 0; day < simDays && day < pricePathDaily.length; day++) {
     const currentPrice = pricePathDaily[day];
-    const currentVol = volatilityPathDaily[day] ?? params.assumptions.impliedVolatility ?? 25;
-    const daysRemaining = params.daysToExpiration - day;
+    const currentVol = volPath[day] ?? assumptions.impliedVolatility ?? 25;
+    const daysRemaining = normalizedParams.daysToExpiration - day;
     
     if (daysRemaining <= 0) break; // Option expired
     
     // Recalculate strategy parameters for this day
     const updatedParams: OptionStrategyInput = {
-      ...params,
+      ...normalizedParams,
       currentPrice,
       daysToExpiration: daysRemaining,
       assumptions: {
-        ...params.assumptions,
+        ...assumptions,
         impliedVolatility: currentVol
       }
     };

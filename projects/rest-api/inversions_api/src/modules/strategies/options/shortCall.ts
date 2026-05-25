@@ -1,4 +1,4 @@
-import type { OptionStrategyInput, OptionStrategyOutput, PriceScenario } from "../optionsStrategyContract";
+import type { OptionStrategyInput, OptionStrategyOutput, PriceScenario, OptionStrategyContract } from "../optionsStrategyContract";
 
 /**
  * T085: Short Call Strategy Core
@@ -187,4 +187,31 @@ export function checkMarginAlert(
   const marketToMarketLoss = Math.max(0, currentPrice - strikePrice);
   const premiumBenefit = premium;
   return marketToMarketLoss > premiumBenefit * (1 - marginLevel);
+}
+
+/**
+ * Calculate Short Call result - simplified output for tests
+ */
+export function calculateShortCallResult(params: OptionStrategyInput | OptionStrategyContract): {
+  breakEven: number;
+  maxLoss: number;
+  maxProfit: number;
+  requiredMargin: number;
+} {
+  const strikePrice = params.strikePrice;
+  // Handle both property name variants
+  const premium = "premiumPerContract" in params ? params.premiumPerContract : (params as any).premium;
+  const numberOfContracts = "numberOfContracts" in params ? params.numberOfContracts : (params as any).quantity;
+  
+  const breakEven = strikePrice + premium;
+  const maxLoss = Number.POSITIVE_INFINITY;
+  const maxProfit = premium * numberOfContracts * 100;
+  const requiredMargin = parseFloat((strikePrice * numberOfContracts * 100 * 0.2).toFixed(2));
+  
+  return {
+    breakEven,
+    maxLoss,
+    maxProfit,
+    requiredMargin
+  };
 }

@@ -1,4 +1,4 @@
-import type { OptionStrategyInput, OptionStrategyOutput, PriceScenario } from "../optionsStrategyContract";
+import type { OptionStrategyInput, OptionStrategyOutput, PriceScenario, OptionStrategyContract } from "../optionsStrategyContract";
 
 /**
  * T083: Long Call Strategy Core
@@ -178,4 +178,31 @@ export function checkStopLoss(
   const maxLossAllowed = premium * (stopLossPercentage / 100);
   const currentLoss = Math.max(0, premium - (currentPrice - strikePrice));
   return currentLoss >= maxLossAllowed;
+}
+
+/**
+ * Calculate Long Call result - simplified output for tests
+ */
+export function calculateLongCallResult(params: OptionStrategyInput | OptionStrategyContract): {
+  breakEven: number;
+  maxLoss: number;
+  maxProfit: number;
+  requiredMargin: number;
+} {
+  const strikePrice = params.strikePrice;
+  // Handle both property name variants
+  const premium = "premiumPerContract" in params ? params.premiumPerContract : (params as any).premium;
+  const numberOfContracts = "numberOfContracts" in params ? params.numberOfContracts : (params as any).quantity;
+  
+  const breakEven = strikePrice + premium;
+  const maxLoss = premium * numberOfContracts * 100;
+  const maxProfit = Number.POSITIVE_INFINITY;
+  const requiredMargin = premium * numberOfContracts * 100;
+  
+  return {
+    breakEven,
+    maxLoss,
+    maxProfit,
+    requiredMargin
+  };
 }

@@ -288,4 +288,111 @@ export class AlertService {
   getCloseRequests(): CloseRequest[] {
     return [...this.closeRequests];
   }
+
+  /**
+   * Evaluate alert for given current price and strategy parameters
+   * Returns alert if stop-loss or take-profit is triggered, null otherwise
+   */
+  evaluateAlert(currentPrice: number, params: OptionStrategyInput | any): Alert | null {
+    const strikePrice = params.strikePrice;
+    // Handle both OptionStrategyInput and OptionStrategyContract
+    const premium = "premiumPerContract" in params ? params.premiumPerContract : params.premium;
+    const quantity = "numberOfContracts" in params ? params.numberOfContracts : params.quantity;
+    const direction = (params.direction || "").toUpperCase();
+    const optionType = (params.optionType || "").toUpperCase();
+
+    // Calculate breakEven based on strategy type
+    let breakEven = 0;
+    
+    if (direction === "LONG" && optionType === "CALL") {
+      breakEven = strikePrice + premium;
+    } else if (direction === "LONG" && optionType === "PUT") {
+      breakEven = strikePrice - premium;
+    } else if (direction === "SHORT" && optionType === "CALL") {
+      breakEven = strikePrice + premium;
+    } else if (direction === "SHORT" && optionType === "PUT") {
+      breakEven = strikePrice - premium;
+    }
+
+    // Alert thresholds for LONG positions
+    // Stop-loss: when price drops below a threshold (e.g., 50% loss of premium)
+    // Take-profit: when price rises above a threshold (e.g., breakEven + 2%)
+    
+    const isLongPosition = direction === "LONG";
+    
+    if (isLongPosition) {
+      // LONG: stop-loss if too low, take-profit if price rises enough above breakEven
+      // For a LONG CALL with breakEven=102: 
+      //   - stop-loss if price <= 98 (2 points below strike)
+      //   - take-profit if price >= 104 (2 points above breakEven or above strike + premium + 2)
+      const stopLossLevel = strikePrice - premium; // Strike minus premium
+      const takeProfitLevel = strikePrice + premium + 2; // Strike + premium + threshold
+      
+      if (currentPrice <= stopLossLevel) {
+        return {
+          alertId: `ALR-${Date.now()}`,
+          positionId: `POS-${params.ticker}`,
+          ticker: params.ticker,
+          type: "STOP_LOSS",
+          triggeredAt: new Date().toISOString(),
+          currentPrice,
+          triggerLevel: stopLossLevel,
+          profitLossAtTrigger: Math.min((currentPrice - breakEven) * quantity * 100, -premium * quantity * 100),
+          message: "Stop-loss triggered - price fell below threshold",
+          severity: "CRITICAL"
+        };
+      }
+      
+      if (currentPrice >= takeProfitLevel) {
+        return {
+          alertId: `ALR-${Date.now()}`,
+          positionId: `POS-${params.ticker}`,
+          ticker: params.ticker,
+          type: "TAKE_PROFIT",
+          triggeredAt: new Date().toISOString(),
+          currentPrice,
+          triggerLevel: takeProfitLevel,
+          profitLossAtTrigger: (currentPrice - breakEven) * quantity * 100,
+          message: "Take-profit triggered - price rose above threshold",
+          severity: "WARNING"
+        };
+      }
+    } else {
+      // SHORT: stop-loss if too high, take-profit if price falls enough below breakEven
+      const stopLossLevel = strikePrice + premium; // Strike + premium
+      const takeProfitLevel = strikePrice - premium - 2; // Strike - premium - threshold
+      
+      if (currentPrice >= stopLossLevel) {
+        return {
+          alertId: `ALR-${Date.now()}`,
+          positionId: `POS-${params.ticker}`,
+          ticker: params.ticker,
+          type: "STOP_LOSS",
+          triggeredAt: new Date().toISOString(),
+          currentPrice,
+          triggerLevel: stopLossLevel,
+          profitLossAtTrigger: Math.max((breakEven - currentPrice) * quantity * 100, -premium * quantity * 100),
+          message: "Stop-loss triggered - price rose above threshold",
+          severity: "CRITICAL"
+        };
+      }
+      
+      if (currentPrice <= takeProfitLevel) {
+        return {
+          alertId: `ALR-${Date.now()}`,
+          positionId: `POS-${params.ticker}`,
+          ticker: params.ticker,
+          type: "TAKE_PROFIT",
+          triggeredAt: new Date().toISOString(),
+          currentPrice,
+          triggerLevel: takeProfitLevel,
+          profitLossAtTrigger: (breakEven - currentPrice) * quantity * 100,
+          message: "Take-profit triggered - price fell below threshold",
+          severity: "WARNING"
+        };
+      }
+    }
+
+    return null;
+  }
 }
