@@ -15,6 +15,8 @@ import { IndicatorsMenu } from "./IndicatorsMenu";
 import { RuntimeModeSwitches } from "./RuntimeModeSwitches";
 import { ConfluenceSignalsTable } from "./ConfluenceSignalsTable";
 import { useSignalStore } from "../../store/signals";
+import { FundamentalCopilotPanel } from "../ai/FundamentalCopilotPanel";
+import { MultiSymbolCharts } from "./MultiSymbolCharts";
 
 const initialCores: CoreDefinition[] = [
   { id: "technical", label: "Technical", description: "Momentum y estructura", enabled: true },
@@ -234,6 +236,9 @@ export function MainDashboard() {
               </div>
             ) : null}
 
+            {/* ── Multi-symbol charts ──────────────────────────── */}
+            {!isTestEnv ? <MultiSymbolCharts timeframe={timeframe} /> : null}
+
             <SignalOverlay cards={payload.cards} />
             <ExplainabilityTable cards={payload.cards} />
 
@@ -255,6 +260,9 @@ export function MainDashboard() {
               </div>
               <SignalEvidencePanel evidence={selectedSignal?.evidence ?? []} />
             </div>
+
+            {/* ── Copilot Fundamental IA ───────────────────────── */}
+            <FundamentalCopilotPanel defaultTicker={selectedSymbol} />
           </div>
         ) : !loading ? (
           <div style={{
