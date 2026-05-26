@@ -38,15 +38,19 @@ CREATE INDEX IF NOT EXISTS idx_strategy_recommendation_audit_created_at
 -- Hacer la tabla inmutable
 ALTER TABLE strategy_recommendation_audit ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "strategy_audit_insert_system_only" ON strategy_recommendation_audit;
 CREATE POLICY "strategy_audit_insert_system_only" ON strategy_recommendation_audit
   FOR INSERT WITH CHECK (true);
 
+DROP POLICY IF EXISTS "strategy_audit_select_all" ON strategy_recommendation_audit;
 CREATE POLICY "strategy_audit_select_all" ON strategy_recommendation_audit
   FOR SELECT USING (true);
 
+DROP POLICY IF EXISTS "strategy_audit_no_update" ON strategy_recommendation_audit;
 CREATE POLICY "strategy_audit_no_update" ON strategy_recommendation_audit
   FOR UPDATE USING (false);
 
+DROP POLICY IF EXISTS "strategy_audit_no_delete" ON strategy_recommendation_audit;
 CREATE POLICY "strategy_audit_no_delete" ON strategy_recommendation_audit
   FOR DELETE USING (false);
 

@@ -40,15 +40,19 @@ CREATE INDEX IF NOT EXISTS idx_fundamental_analysis_audit_created_at
 -- UPDATE y DELETE prohibidos
 ALTER TABLE fundamental_analysis_audit ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "audit_insert_system_only" ON fundamental_analysis_audit;
 CREATE POLICY "audit_insert_system_only" ON fundamental_analysis_audit
   FOR INSERT WITH CHECK (true);
 
+DROP POLICY IF EXISTS "audit_select_all" ON fundamental_analysis_audit;
 CREATE POLICY "audit_select_all" ON fundamental_analysis_audit
   FOR SELECT USING (true);
 
+DROP POLICY IF EXISTS "audit_no_update" ON fundamental_analysis_audit;
 CREATE POLICY "audit_no_update" ON fundamental_analysis_audit
   FOR UPDATE USING (false);
 
+DROP POLICY IF EXISTS "audit_no_delete" ON fundamental_analysis_audit;
 CREATE POLICY "audit_no_delete" ON fundamental_analysis_audit
   FOR DELETE USING (false);
 
