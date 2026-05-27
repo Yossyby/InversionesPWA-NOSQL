@@ -26,7 +26,8 @@ export function createCompanyProfileRouter(supabaseClient: SupabaseClient): Rout
   router.get("/:ticker", async (req: Request, res: Response) => {
     try {
       const { ticker } = req.params;
-      const { lookbackDays = 252, cache = true } = req.query;
+      const { lookbackDays = 252, cache = true, source } = req.query;
+      const sourceId = typeof source === "string" && source ? source : undefined;
       const userId = (req as any).user?.id || "anonymous";
 
       // T006f: Audit log
@@ -35,14 +36,15 @@ export function createCompanyProfileRouter(supabaseClient: SupabaseClient): Rout
         ticker: ticker.toUpperCase(),
         user_id: userId,
         timestamp: new Date().toISOString(),
-        lookbackDays: Number(lookbackDays)
+        lookbackDays: Number(lookbackDays),
+        source: sourceId ?? "auto"
       };
 
       // T006b: Orquestar llamadas
-      // fetch(ticker) → viabilityEngine.score(data)
       const fundamentalData = await fundamentalDataService.fetch(
         ticker.toUpperCase(),
-        Number(lookbackDays)
+        Number(lookbackDays),
+        sourceId
       );
 
       if (!fundamentalData.success || !fundamentalData.data) {
@@ -130,6 +132,7 @@ export function createCompanyProfileRouter(supabaseClient: SupabaseClient): Rout
         },
         metadata: {
           data_source_id: data.metadata.sourceId,
+          data_source_requested: sourceId ?? "auto",
           data_version: data.metadata.dataVersion,
           calculation_version: "1.0",
           sources: [data.metadata.sourceId]

@@ -396,7 +396,7 @@ export class SimFinDataSource implements PluggableSource {
   }
 
   private get headers(): Record<string, string> {
-    return { Authorization: `Bearer ${this.apiKey}` };
+    return { Authorization: this.apiKey };
   }
 
   private async get<T>(path: string, params?: Record<string, string>): Promise<T | null> {
@@ -826,6 +826,366 @@ export class YahooFinanceDataSource implements PluggableSource {
 }
 
 // ---------------------------------------------------------------------------
+// Financial Modeling Prep (FMP) DataSource
+// ---------------------------------------------------------------------------
+
+/**
+ * DataSource para Financial Modeling Prep (FMP) usando endpoints /stable/
+ * Endpoints:
+ *  - /stable/profile           → precio, marketCap, beta, sector, divYield, 52w range
+ *  - /stable/key-metrics-ttm   → ROE, PE, PB, PS y métricas de valuación
+ *  - /stable/ratios-ttm        → márgenes (gross, operating, net)
+ *  - /stable/historical-price-eod/light → precios históricos para volatilidad
+ */
+export class FMPDataSource implements PluggableSource {
+  config: DataSourceConfig;
+  private readonly apiKey: string;
+
+  constructor(apiKey?: string) {
+    this.apiKey = apiKey ?? process.env.FMP_API_KEY ?? "";
+    this.config = {
+      id: "fmp",
+      name: "Financial Modeling Prep",
+      baseUrl: "https://financialmodelingprep.com",
+      apiKey: this.apiKey,
+      rateLimit: {
+        requestsPerMin: 60,
+        burstAllowed: 5
+      }
+    };
+  }
+
+  private async get<T>(path: string, params: Record<string, string> = {}): Promise<T | null> {
+    try {
+      const qs = new URLSearchParams({ ...params, apikey: this.apiKey });
+      const res = await fetch(`${this.config.baseUrl}${path}?${qs}`, {
+        signal: AbortSignal.timeout(8000)
+      });
+      if (!res.ok) return null;
+      return (await res.json()) as T;
+    } catch {
+      return null;
+    }
+  }
+
+  async fetch(ticker: string, lookbackDays: number = 252): Promise<DataSourceResult> {
+    const sym = ticker.toUpperCase();
+    console.log(`[FMPDataSource] Fetching ${sym}`);
+
+    const endDate = new Date().toISOString().split("T")[0];
+    const startDate = new Date(Date.now() - (lookbackDays + 20) * 86_400_000).toISOString().split("T")[0];
+
+    const [profileRes, metricsRes, ratiosRes, histRes] = await Promise.allSettled([
+      this.get<any[]>("/stable/profile", { symbol: sym }),
+      this.get<any[]>("/stable/key-metrics-ttm", { symbol: sym }),
+      this.get<any[]>("/stable/ratios-ttm", { symbol: sym }),
+      this.get<any[]>("/stable/historical-price-eod/light", { symbol: sym, from: startDate, to: endDate })
+    ]);
+
+    const profile = profileRes.status === "fulfilled" ? profileRes.value?.[0] : null;
+    const metrics = metricsRes.status === "fulfilled" ? metricsRes.value?.[0] : null;
+    const ratios = ratiosRes.status === "fulfilled" ? ratiosRes.value?.[0] : null;
+    const hist: Array<{ date: string; price: number }> =
+      histRes.status === "fulfilled" ? (histRes.value ?? []) : [];
+
+    if (!profile) {
+      return { success: false, error: `FMP returned no data for ${sym}`, timestamp: new Date().toISOString() };
+    }
+
+    const now = new Date().toISOString();
+    const currentPrice: number = profile.price ?? 0;
+
+    // Build price array (FMP returns newest first)
+    const closePrices: number[] = hist.map((h) => h.price).filter((p) => p > 0);
+    const prices252 = closePrices.slice(0, Math.min(252, closePrices.length));
+    const price52High: number = profile.range ? parseFloat(String(profile.range).split("-")[1]) || currentPrice : currentPrice;
+    const price52Low: number = profile.range ? parseFloat(String(profile.range).split("-")[0]) || currentPrice : currentPrice;
+    const priceYearAgo = prices252[prices252.length - 1] ?? currentPrice;
+    const change52wPct = priceYearAgo > 0
+      ? Math.round(((currentPrice - priceYearAgo) / priceYearAgo) * 10000) / 100
+      : 0;
+    const annualVol = calculateHistoricalVolatility(closePrices, lookbackDays);
+
+    const marketCap: number = profile.marketCap ?? 0;
+    const beta: number = profile.beta ?? 0;
+    const divYield: number = metrics?.dividendYieldPercentageTTM ?? (profile.lastDividend && currentPrice > 0
+      ? Math.round((profile.lastDividend / currentPrice) * 10000) / 100
+      : 0);
+
+    const peRatio: number = metrics?.peRatioTTM ?? 0;
+    const pbRatio: number = metrics?.pbRatioTTM ?? 0;
+    const psRatio: number = metrics?.priceToSalesRatioTTM ?? 0;
+    const roe: number = metrics?.roeTTM ? Math.round(metrics.roeTTM * 10000) / 100 : 0;
+    const debtToEquity: number = metrics?.debtToEquityTTM ?? 0;
+    const netMarginPct: number = ratios?.netProfitMarginTTM ? Math.round(ratios.netProfitMarginTTM * 10000) / 100 : 0;
+    const grossMarginPct: number = ratios?.grossProfitMarginTTM ? Math.round(ratios.grossProfitMarginTTM * 10000) / 100 : 0;
+    const operatingMarginPct: number = ratios?.operatingProfitMarginTTM ? Math.round(ratios.operatingProfitMarginTTM * 10000) / 100 : 0;
+
+    const sector: string = profile.sector ?? "";
+    const industry: string = profile.industry ?? "";
+    const country: string = profile.country ?? "";
+    const companyName: string = profile.companyName ?? sym;
+
+    const populatedCount = [currentPrice, marketCap, peRatio, roe, beta, sector, annualVol].filter(Boolean).length;
+    const completenessPercent = Math.round((populatedCount / 7) * 100);
+
+    const data: FundamentalAnalysisData = {
+      ticker: sym,
+      companyName,
+      metrics: {
+        ...(marketCap > 0 ? { marketCap: { value: marketCap, currency: "USD", timestamp: now } } : {}),
+        priceHistory: {
+          currentPrice,
+          priceChange52WeekPercent: change52wPct,
+          priceHigh52Week: price52High,
+          priceLow52Week: price52Low,
+          avgVolume10Day: profile.averageVolume ?? profile.volume ?? 0,
+          timestamp: now
+        },
+        volatility: {
+          annualizedVolatility: annualVol,
+          lookbackDays,
+          calculationMethod: "historical_log_returns",
+          timestamp: now
+        },
+        financialRatios: {
+          roe,
+          peRatio,
+          pbRatio,
+          psRatio,
+          debtToEquity,
+          timestamp: now
+        },
+        ...(beta > 0 ? { beta: { value: beta, confidenceLevel: "HIGH", calculationMethod: "provider", timestamp: now } } : {}),
+        ...(divYield > 0 ? {
+          dividend: {
+            annualDividendPerShare: profile.lastDividend ?? 0,
+            dividendYieldPercent: divYield,
+            payoutRatio: 0,
+            lastPaymentDate: now.split("T")[0],
+            exDividendDate: now.split("T")[0],
+            timestamp: now
+          }
+        } : {}),
+        ...(sector ? { sector: { sector, industry, subIndustry: industry, timestamp: now } } : {}),
+        ...(country ? { country: { isoCode: country, primaryListing: profile.exchange ?? "NASDAQ", timestamp: now } } : {})
+      },
+      metadata: {
+        sourceId: "fmp",
+        fetchTimestamp: now,
+        dataVersion: "stable_v1",
+        assumptions: {
+          volatilityCalculationMethod: "historical_log_returns",
+          lookbackPeriod: lookbackDays,
+          riskFreeRate: 4.5,
+          marketIndexBench: "SPX"
+        },
+        quality: {
+          completenessPercent,
+          lastValidation: now
+        }
+      },
+      auditTrail: { createdAt: now, lastUpdated: now }
+    };
+
+    return { success: true, data, timestamp: now, cost: 3, costMetric: "api_calls" };
+  }
+
+  validate(data: FundamentalAnalysisData): boolean {
+    return !!(data.ticker && data.metrics.priceHistory && data.metadata.sourceId === "fmp");
+  }
+
+  async isHealthy(): Promise<boolean> {
+    try {
+      const res = await this.get<any[]>("/stable/profile", { symbol: "AAPL" });
+      return Array.isArray(res) && res.length > 0 && "price" in res[0];
+    } catch {
+      return false;
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Finnhub DataSource
+// ---------------------------------------------------------------------------
+
+/**
+ * DataSource para Finnhub
+ * Endpoints:
+ *  - /api/v1/stock/profile2        → companyName, country, industry, marketCap
+ *  - /api/v1/stock/metric?metric=all → beta, 52w high/low, ROE, PE, márgenes
+ *  - /api/v1/quote                 → precio actual, volumen
+ *  - /api/v1/stock/candle          → precios históricos para volatilidad
+ */
+export class FinnhubDataSource implements PluggableSource {
+  config: DataSourceConfig;
+  private readonly apiKey: string;
+
+  constructor(apiKey?: string) {
+    this.apiKey = apiKey ?? process.env.FINNHUB_API_KEY ?? "";
+    this.config = {
+      id: "finnhub",
+      name: "Finnhub",
+      baseUrl: "https://finnhub.io",
+      apiKey: this.apiKey,
+      rateLimit: {
+        requestsPerMin: 60,
+        burstAllowed: 5
+      }
+    };
+  }
+
+  private async get<T>(path: string, params: Record<string, string> = {}): Promise<T | null> {
+    try {
+      const qs = new URLSearchParams({ ...params, token: this.apiKey });
+      const res = await fetch(`${this.config.baseUrl}${path}?${qs}`, {
+        signal: AbortSignal.timeout(8000)
+      });
+      if (!res.ok) return null;
+      return (await res.json()) as T;
+    } catch {
+      return null;
+    }
+  }
+
+  async fetch(ticker: string, lookbackDays: number = 252): Promise<DataSourceResult> {
+    const sym = ticker.toUpperCase();
+    console.log(`[FinnhubDataSource] Fetching ${sym}`);
+
+    const toUnix = Math.floor(Date.now() / 1000);
+    const fromUnix = toUnix - (lookbackDays + 20) * 86400;
+
+    const [profileRes, metricsRes, quoteRes, candleRes] = await Promise.allSettled([
+      this.get<any>("/api/v1/stock/profile2", { symbol: sym }),
+      this.get<any>("/api/v1/stock/metric", { symbol: sym, metric: "all" }),
+      this.get<any>("/api/v1/quote", { symbol: sym }),
+      this.get<any>("/api/v1/stock/candle", {
+        symbol: sym,
+        resolution: "D",
+        from: String(fromUnix),
+        to: String(toUnix)
+      })
+    ]);
+
+    const profile = profileRes.status === "fulfilled" ? profileRes.value : null;
+    const metricsData = metricsRes.status === "fulfilled" ? metricsRes.value?.metric : null;
+    const quote = quoteRes.status === "fulfilled" ? quoteRes.value : null;
+    const candle = candleRes.status === "fulfilled" ? candleRes.value : null;
+
+    if (!quote?.c) {
+      return { success: false, error: `Finnhub returned no quote for ${sym}`, timestamp: new Date().toISOString() };
+    }
+
+    const now = new Date().toISOString();
+    const currentPrice: number = quote.c ?? 0;
+
+    // Build close prices from candle data (newest first)
+    const closePrices: number[] = Array.isArray(candle?.c)
+      ? [...candle.c].reverse().filter((v: number) => v > 0)
+      : [];
+    const annualVol = calculateHistoricalVolatility(closePrices, lookbackDays);
+
+    const price52High: number = metricsData?.["52WeekHigh"] ?? currentPrice;
+    const price52Low: number = metricsData?.["52WeekLow"] ?? currentPrice;
+    const change52wPct: number = metricsData?.["52WeekPriceReturnDaily"] ?? 0;
+
+    const marketCap: number = profile?.marketCapitalization ? profile.marketCapitalization * 1_000_000 : 0;
+    const beta: number = metricsData?.beta ?? 0;
+
+    const peRatio: number = metricsData?.peNormalizedAnnual ?? metricsData?.peTTM ?? 0;
+    const pbRatio: number = metricsData?.pbAnnual ?? metricsData?.pbQuarterly ?? 0;
+    const psRatio: number = metricsData?.psAnnual ?? metricsData?.psTTM ?? 0;
+    const roe: number = metricsData?.roeRfy ? Math.round(metricsData.roeRfy * 100) / 100 : 0;
+    const netMarginPct: number = metricsData?.netProfitMarginAnnual ?? metricsData?.netProfitMarginTTM ?? 0;
+
+    const divYield: number = metricsData?.dividendYieldIndicatedAnnual
+      ? Math.round(metricsData.dividendYieldIndicatedAnnual * 10000) / 100
+      : 0;
+
+    const sector: string = profile?.finnhubIndustry ?? "";
+    const companyName: string = profile?.name ?? sym;
+    const country: string = profile?.country ?? "";
+
+    const populatedCount = [currentPrice, marketCap, peRatio || undefined, roe || undefined, beta || undefined, sector, annualVol].filter(Boolean).length;
+    const completenessPercent = Math.round((populatedCount / 7) * 100);
+
+    const data: FundamentalAnalysisData = {
+      ticker: sym,
+      companyName,
+      metrics: {
+        ...(marketCap > 0 ? { marketCap: { value: marketCap, currency: "USD", timestamp: now } } : {}),
+        priceHistory: {
+          currentPrice,
+          priceChange52WeekPercent: change52wPct,
+          priceHigh52Week: price52High,
+          priceLow52Week: price52Low,
+          avgVolume10Day: metricsData?.["10DayAverageTradingVolume"] ? metricsData["10DayAverageTradingVolume"] * 1_000_000 : 0,
+          timestamp: now
+        },
+        volatility: {
+          annualizedVolatility: annualVol > 0 ? annualVol : (metricsData?.["3MonthADReturnStd"] ?? 0),
+          lookbackDays,
+          calculationMethod: "historical_log_returns",
+          timestamp: now
+        },
+        financialRatios: {
+          roe,
+          peRatio,
+          pbRatio,
+          psRatio,
+          debtToEquity: metricsData?.totalDebt2TotalEquityAnnual ?? metricsData?.totalDebt2TotalEquityQuarterly ?? 0,
+          timestamp: now
+        },
+        ...(beta > 0 ? { beta: { value: beta, confidenceLevel: "HIGH", calculationMethod: "provider", timestamp: now } } : {}),
+        ...(divYield > 0 ? {
+          dividend: {
+            annualDividendPerShare: metricsData?.dividendPerShareAnnual ?? 0,
+            dividendYieldPercent: divYield,
+            payoutRatio: 0,
+            lastPaymentDate: now.split("T")[0],
+            exDividendDate: now.split("T")[0],
+            timestamp: now
+          }
+        } : {}),
+        ...(sector ? { sector: { sector, industry: sector, subIndustry: sector, timestamp: now } } : {}),
+        ...(country ? { country: { isoCode: country, primaryListing: profile?.exchange ?? "NASDAQ", timestamp: now } } : {})
+      },
+      metadata: {
+        sourceId: "finnhub",
+        fetchTimestamp: now,
+        dataVersion: "v1",
+        assumptions: {
+          volatilityCalculationMethod: "historical_log_returns",
+          lookbackPeriod: lookbackDays,
+          riskFreeRate: 4.5,
+          marketIndexBench: "SPX"
+        },
+        quality: {
+          completenessPercent,
+          lastValidation: now
+        }
+      },
+      auditTrail: { createdAt: now, lastUpdated: now }
+    };
+
+    return { success: true, data, timestamp: now, cost: 2, costMetric: "api_calls" };
+  }
+
+  validate(data: FundamentalAnalysisData): boolean {
+    return !!(data.ticker && data.metrics.priceHistory && data.metadata.sourceId === "finnhub");
+  }
+
+  async isHealthy(): Promise<boolean> {
+    try {
+      const res = await this.get<any>("/api/v1/quote", { symbol: "AAPL" });
+      return res !== null && typeof res.c === "number";
+    } catch {
+      return false;
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
 // FundamentalDataService
 // ---------------------------------------------------------------------------
 
@@ -843,10 +1203,12 @@ export class FundamentalDataService {
   constructor(supabaseClient?: SupabaseClient) {
     this.supabaseClient = supabaseClient;
 
-    // T004a: Finviz primario → SimFin secundario → Yahoo Finance fallback gratuito
+    // Priority: FMP → Finnhub → SimFin → Finviz → Yahoo Finance
     this.sources = [
-      new FinvizDataSource(process.env.FINVIZ_API_KEY),
+      new FMPDataSource(process.env.FMP_API_KEY),
+      new FinnhubDataSource(process.env.FINNHUB_API_KEY),
       new SimFinDataSource(process.env.SIMFIN_API_KEY),
+      new FinvizDataSource(process.env.FINVIZ_API_KEY),
       new YahooFinanceDataSource()
     ];
 
@@ -906,10 +1268,24 @@ export class FundamentalDataService {
   }
 
   /**
-   * T004d: Fallback chain — SimFin → Yahoo Finance → caché stale
+   * T004d: Fallback chain with optional source selection.
+   * If sourceId is provided, only that source is tried (no fallback, no cache bypass).
    */
-  async fetch(ticker: string, lookbackDays: number = 252): Promise<DataSourceResult> {
-    console.log(`[FundamentalDataService] Fetching ${ticker}...`);
+  async fetch(ticker: string, lookbackDays: number = 252, sourceId?: string): Promise<DataSourceResult> {
+    console.log(`[FundamentalDataService] Fetching ${ticker}${sourceId ? ` via ${sourceId}` : ""}...`);
+
+    // If a specific source is requested, use it directly (skip cache)
+    if (sourceId) {
+      const source = this.sources.find((s) => s.config.id === sourceId);
+      if (!source) {
+        return { success: false, error: `Unknown source: ${sourceId}`, timestamp: new Date().toISOString() };
+      }
+      const result = await source.fetch(ticker, lookbackDays);
+      if (result.success && result.data && this.supabaseClient) {
+        await this.cacheData(ticker, result.data);
+      }
+      return result;
+    }
 
     const cachedEntry = await this.getFromCache(ticker);
     if (cachedEntry) {

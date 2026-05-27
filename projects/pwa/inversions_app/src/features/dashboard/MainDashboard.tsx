@@ -18,7 +18,6 @@ import { SimulationControlPanel } from "./simulation/SimulationControlPanel";
 import type { ConfluenceSignalRow, SimulationResponse } from "../../services/signals/confluenceTableApi";
 import { useSignalStore } from "../../store/signals";
 import { FundamentalCopilotPanel } from "../ai/FundamentalCopilotPanel";
-import { MultiSymbolCharts } from "./MultiSymbolCharts";
 
 const initialCores: CoreDefinition[] = [
   { id: "technical", label: "Technical", description: "Momentum y estructura", enabled: true },
@@ -48,12 +47,27 @@ export function MainDashboard() {
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [simulationRows, setSimulationRows] = useState<ConfluenceSignalRow[] | undefined>(undefined);
   const [simulationVerdict, setSimulationVerdict] = useState<any | null>(null);
+  const [chartSymbol, setChartSymbol] = useState("SPY");
+  const [chartSymbolInput, setChartSymbolInput] = useState("");
   const { selectedInstrument, selectedSignal: storeSelectedRow } = useSignalStore();
 
   const handleSimulationResult = useCallback((result: SimulationResponse) => {
     setSimulationRows(result.table);
     setSimulationVerdict(result.verdict);
   }, []);
+
+  const handleFundamentalRows = useCallback((rows: ConfluenceSignalRow[]) => {
+    setSimulationRows((prev) => {
+      const existing = prev ?? [];
+      const withoutFundamental = existing.filter((r) => r.core !== "A_FUNDAMENTAL");
+      return [...withoutFundamental, ...rows];
+    });
+  }, []);
+
+  // Sync chart symbol when user clicks instrument in WatchlistTree
+  useEffect(() => {
+    if (selectedInstrument?.symbol) setChartSymbol(selectedInstrument.symbol);
+  }, [selectedInstrument?.symbol]);
 
   const selectedSymbol = selectedInstrument?.symbol ?? payload?.cards[0]?.instrument ?? "SPY";
 
@@ -232,15 +246,64 @@ export function MainDashboard() {
               <div style={{ display: "grid", gap: "1rem", gridTemplateColumns: "280px 1fr" }}>
                 <WatchlistTree />
                 <div style={{ display: "grid", gap: "1rem" }}>
-                  <div className="card" style={{ minHeight: 380 }}>
-                    <SuperChart
-                      symbol={selectedSymbol}
-                      timeframe={timeframe}
-                      startDate={periodRange?.startDate}
-                      endDate={periodRange?.endDate}
-                    />
+                  <div className="card" style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+                    {/* ── Symbol selector ─────────────────────────── */}
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", flexWrap: "wrap" }}>
+                      <span style={{ fontSize: "0.7rem", color: "var(--color-text-muted)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", whiteSpace: "nowrap" }}>
+                        Empresa
+                      </span>
+                      <div style={{ display: "flex", gap: "0.35rem", flexWrap: "wrap" }}>
+                        {instrumentsInput.split(",").map((s) => s.trim()).filter(Boolean).map((sym) => (
+                          <button
+                            key={sym}
+                            type="button"
+                            className="btn-ghost"
+                            style={{
+                              fontSize: "0.75rem",
+                              padding: "0.2rem 0.6rem",
+                              fontWeight: chartSymbol === sym ? 800 : 500,
+                              background: chartSymbol === sym ? "var(--color-accent, #ffd43b)" : undefined,
+                              color: chartSymbol === sym ? "#000" : undefined,
+                              border: chartSymbol === sym ? "1px solid var(--color-accent)" : undefined
+                            }}
+                            onClick={() => setChartSymbol(sym)}
+                          >
+                            {sym}
+                          </button>
+                        ))}
+                      </div>
+                      <form
+                        onSubmit={(e) => {
+                          e.preventDefault();
+                          const val = chartSymbolInput.trim().toUpperCase();
+                          if (val) { setChartSymbol(val); setChartSymbolInput(""); }
+                        }}
+                        style={{ display: "flex", gap: "0.3rem" }}
+                      >
+                        <input
+                          value={chartSymbolInput}
+                          onChange={(e) => setChartSymbolInput(e.target.value)}
+                          placeholder="Otro ticker…"
+                          style={{ width: 110, fontSize: "0.78rem", padding: "0.2rem 0.5rem" }}
+                        />
+                        <button type="submit" className="btn-ghost" style={{ fontSize: "0.75rem", padding: "0.2rem 0.5rem" }}>
+                          ↵
+                        </button>
+                      </form>
+                      <span style={{ marginLeft: "auto", fontSize: "0.8rem", fontWeight: 700, color: "var(--color-accent, #ffd43b)" }}>
+                        {chartSymbol}
+                      </span>
+                    </div>
+                    <div style={{ minHeight: 380, border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", overflow: "hidden" }}>
+                      <SuperChart
+                        symbol={chartSymbol}
+                        timeframe={timeframe}
+                        startDate={periodRange?.startDate}
+                        endDate={periodRange?.endDate}
+                      />
+                    </div>
                   </div>
-                  <SimulationControlPanel ticket={selectedSymbol} onResult={handleSimulationResult} />
+                  <SimulationControlPanel ticket={chartSymbol} onResult={handleSimulationResult} onFundamentalRows={handleFundamentalRows} />
                   {simulationVerdict && (
                     <div className="card" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.5rem" }}>
                       <strong>Verdict derivado:</strong>
@@ -250,13 +313,10 @@ export function MainDashboard() {
                       </span>
                     </div>
                   )}
-                  <ConfluenceSignalsTable symbol={selectedSymbol} rows={simulationRows} />
+                  <ConfluenceSignalsTable symbol={chartSymbol} rows={simulationRows} />
                 </div>
               </div>
             ) : null}
-
-            {/* ── Multi-symbol charts ──────────────────────────── */}
-            {!isTestEnv ? <MultiSymbolCharts timeframe={timeframe} /> : null}
 
             <SignalOverlay cards={payload.cards} />
             <ExplainabilityTable cards={payload.cards} />
@@ -292,7 +352,7 @@ export function MainDashboard() {
             </div>
 
             {/* ── Copilot Fundamental IA ───────────────────────── */}
-            <FundamentalCopilotPanel defaultTicker={selectedSymbol} />
+            <FundamentalCopilotPanel defaultTicker={chartSymbol} />
           </div>
         ) : !loading ? (
           <div style={{
