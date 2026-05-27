@@ -31,6 +31,8 @@ import { chatExplainRouter } from "./routes/indicators/chatExplain";
 import { confluenceTableRouter } from "./routes/signals/confluenceTable";
 import { simulationRunRouter } from "./routes/simulation/run";
 import { indicatorsRateLimit, chatRateLimit } from "./middleware/indicatorsRateLimit";
+import newsSentimentRouter from './routes/news/sentiment';
+import urlAnalysisRouter from './routes/news/urlAnalysis';
 
 const envValidation = validateEnvironment();
 if (!envValidation.isValid) {
@@ -51,7 +53,7 @@ const auditHistoryService = new AuditHistoryService();
 const approvalService = new ApprovalService();
 const executionService = new ExecutionService();
 
-app.use("/api/signals", signalEvaluateRouter);
+app.use('/news/sentiment', newsSentimentRouter);
 app.use("/api/signals", signalDetailsRouter);
 app.use("/api/signals", signalConfluenceRouter);
 app.use("/api/signals", indicatorsRateLimit, confluenceTableRouter);
@@ -76,6 +78,9 @@ app.use("/api/indicators", indicatorsRateLimit, bollingerRouter);
 app.use("/api/indicators", indicatorsRateLimit, indicatorsConfluenceRouter);
 app.use("/api/indicators", indicatorsHealthRouter);
 app.use("/api/chat", chatRateLimit, chatExplainRouter);
+// FIC: urlAnalysisRouter debe estar ANTES de newsSentimentRouter porque tiene rutas más específicas
+app.use("/api/news", urlAnalysisRouter);
+app.use("/api/news", newsSentimentRouter);
 
 app.get("/health", (_req, res) => {
   res.status(200).json({ status: "ok" });
