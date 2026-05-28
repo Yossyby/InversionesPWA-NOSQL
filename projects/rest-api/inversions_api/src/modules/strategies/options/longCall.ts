@@ -1,4 +1,12 @@
 import type { OptionStrategyInput, OptionStrategyOutput, PriceScenario, OptionStrategyContract } from "../optionsStrategyContract";
+import {
+  assignmentValue,
+  normalizeOptionStrategyInput,
+  probabilityInTheMoney,
+  roundMoney,
+  totalPremium,
+  validateOptionInput
+} from "./optionMath";
 
 /**
  * T083: Long Call Strategy Core
@@ -21,9 +29,9 @@ export function calculateLongCallPnL(
 ): number {
   const priceToUse = atPrice ?? currentPrice;
   const intrinsicValue = Math.max(priceToUse - strikePrice, 0);
-  const totalIntrinsicValue = intrinsicValue * numberOfContracts * 100;
-  const totalPremiumPaid = premium * numberOfContracts * 100;
-  return totalIntrinsicValue - totalPremiumPaid;
+  const totalIntrinsicValue = assignmentValue(intrinsicValue, numberOfContracts);
+  const totalPremiumPaid = totalPremium(premium, numberOfContracts);
+  return roundMoney(totalIntrinsicValue - totalPremiumPaid);
 }
 
 /**
@@ -62,7 +70,6 @@ function generateScenario(
   const pnl = calculateLongCallPnL(0, strikePrice, premium, numberOfContracts, priceAtScenario);
   const totalCost = premium * numberOfContracts * 100;
   const roi = totalCost > 0 ? (pnl / totalCost) * 100 : 0;
-  
   return {
     priceMovement: scenarioName,
     priceAtScenario,
@@ -75,10 +82,7 @@ function generateScenario(
  * Evaluate Long Call strategy with all metrics
  */
 export function evaluateLongCall(params: OptionStrategyInput): OptionStrategyOutput {
-  // Validation
-  if (params.optionType !== "CALL" || params.direction !== "LONG") {
-    throw new Error("evaluateLongCall requires CALL type and LONG direction");
-  }
+  validateOptionInput(params, "CALL", "LONG");
   
   const strikePrice = params.strikePrice;
   const premium = params.premiumPerContract;
@@ -86,18 +90,13 @@ export function evaluateLongCall(params: OptionStrategyInput): OptionStrategyOut
   const numberOfContracts = params.numberOfContracts;
   const daysToExp = params.daysToExpiration;
   
-  // Calculate break-even (strike + premium, exact to 0.01)
-  const breakEven = parseFloat((strikePrice + premium).toFixed(2));
+  const breakEven = roundMoney(strikePrice + premium);
   
-  // Calculate max profit (unlimited if price goes very high)
-  // For reporting, assume price reaches strike + 20% (reasonable upside scenario)
-  const maxProfit = calculateLongCallPnL(strikePrice * 1.2, strikePrice, premium, numberOfContracts);
+  const maxProfit = Number.POSITIVE_INFINITY;
   
-  // Calculate max loss (premium paid)
-  const maxLoss = premium * numberOfContracts * 100;
+  const maxLoss = totalPremium(premium, numberOfContracts);
   
-  // Required margin (for long options, margin = premium paid)
-  const requiredMargin = premium * numberOfContracts * 100;
+  const requiredMargin = maxLoss;
   
   // Generate scenarios
   const scenarioAtm = generateScenario(
@@ -124,21 +123,19 @@ export function evaluateLongCall(params: OptionStrategyInput): OptionStrategyOut
     numberOfContracts
   );
   
-  // Risk-adjusted return (profit / max loss)
-  const riskAdjustedReturn = maxProfit / maxLoss;
+  const upsideScenarioPnl = calculateLongCallPnL(0, strikePrice, premium, numberOfContracts, roundMoney(currentPrice * 1.2));
+  const riskAdjustedReturn = maxLoss > 0 ? upsideScenarioPnl / maxLoss : 0;
   
-  // Probability ITM at expiration (simplified using Black-Scholes approximation)
-  // For MVP: assume normal distribution of returns
-  const volatility = params.assumptions.impliedVolatility ?? 25; // default 25%
-  const expectedMove = (volatility / 100) * currentPrice * Math.sqrt(daysToExp / 365);
-  const strikeDiff = strikePrice - currentPrice;
-  const zScore = strikeDiff / (expectedMove || 1);
-  const probItm = Math.max(0, Math.min(1, 0.5 + zScore / Math.sqrt(2 * Math.PI)));
+  const volatility = params.assumptions.impliedVolatility ?? 25;
+  const probItm = probabilityInTheMoney("CALL", currentPrice, strikePrice, volatility, daysToExp);
   
   // Warnings
   const warnings: string[] = [];
   if (premium > currentPrice * 0.10) {
     warnings.push("Premium es >10% del precio actual. Requiere movimiento significativo para ser rentable.");
+  }
+  if (params.availableCapital < requiredMargin) {
+    warnings.push(`Capital disponible insuficiente. Requiere al menos ${requiredMargin} USD para cubrir la prima.`);
   }
   if (params.daysToExpiration < 7) {
     warnings.push("Menos de 7 días para expiración. Riesgo de decay acelerado.");
@@ -192,18 +189,19 @@ export function calculateLongCallResult(params: OptionStrategyInput | OptionStra
   maxProfit: number;
   requiredMargin: number;
 } {
-  const strikePrice = params.strikePrice;
-  // Handle both property name variants
-  const premium = "premiumPerContract" in params ? params.premiumPerContract : (params as any).premium;
-  const numberOfContracts = "numberOfContracts" in params ? params.numberOfContracts : (params as any).quantity;
+  const normalized = normalizeOptionStrategyInput(params, "CALL", "LONG");
+  validateOptionInput(normalized, "CALL", "LONG");
+  const strikePrice = normalized.strikePrice;
+  const premium = normalized.premiumPerContract;
+  const numberOfContracts = normalized.numberOfContracts;
   
-  const breakEven = strikePrice + premium;
-  const maxLoss = premium * numberOfContracts * 100;
+  const breakEven = roundMoney(strikePrice + premium);
+  const maxLoss = totalPremium(premium, numberOfContracts);
   const maxProfit = Number.POSITIVE_INFINITY;
-  const requiredMargin = premium * numberOfContracts * 100;
+  const requiredMargin = maxLoss;
   
   return {
-    ticker: params.ticker,
+    ticker: normalized.ticker,
     optionType: "call",
     direction: "long",
     breakEven,

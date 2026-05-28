@@ -17,12 +17,18 @@ export interface SelectedSignal {
   metadata?: Record<string, unknown>;
 }
 
+export interface SelectedOptionsStrategy {
+  id: "short-put" | "long-put" | "short-call" | "long-call";
+  name: "Short Put" | "Long Put" | "Short Call" | "Long Call";
+}
+
 type RuntimeMode = "online" | "offline";
 type OperationalMode = "demo" | "real";
 
 interface SignalStoreState {
   selectedInstrument?: SelectedInstrument;
   selectedSignal?: SelectedSignal;
+  selectedOptionsStrategy?: SelectedOptionsStrategy;
   runtimeMode: RuntimeMode;
   operationalMode: OperationalMode;
 }
@@ -44,6 +50,7 @@ const initialOperationalMode =
 const state: SignalStoreState = {
   selectedInstrument: undefined,
   selectedSignal: undefined,
+  selectedOptionsStrategy: undefined,
   runtimeMode: initialRuntimeMode,
   operationalMode: initialOperationalMode
 };
@@ -74,6 +81,10 @@ export function useSignalStore() {
     },
     setSelectedSignal: (signal: SelectedSignal) => {
       state.selectedSignal = signal;
+      emit();
+    },
+    setSelectedOptionsStrategy: (strategy: SelectedOptionsStrategy) => {
+      state.selectedOptionsStrategy = strategy;
       emit();
     },
     setRuntimeMode: (mode: RuntimeMode) => {

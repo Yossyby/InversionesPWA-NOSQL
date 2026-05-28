@@ -1,4 +1,13 @@
 import type { OptionStrategyInput, OptionStrategyOutput, PriceScenario, OptionStrategyContract } from "../optionsStrategyContract";
+import {
+  assignmentValue,
+  calculateShortOptionMargin,
+  normalizeOptionStrategyInput,
+  probabilityInTheMoney,
+  roundMoney,
+  totalPremium,
+  validateOptionInput
+} from "./optionMath";
 
 /**
  * T086: Short Put Strategy Core
@@ -21,9 +30,9 @@ export function calculateShortPutPnL(
 ): number {
   const priceToUse = atPrice ?? currentPrice;
   const assignmentObligationValue = Math.max(strikePrice - priceToUse, 0);
-  const totalObligation = assignmentObligationValue * numberOfContracts * 100;
-  const totalPremiumReceived = premium * numberOfContracts * 100;
-  return totalPremiumReceived - totalObligation;
+  const totalObligation = assignmentValue(assignmentObligationValue, numberOfContracts);
+  const totalPremiumReceived = totalPremium(premium, numberOfContracts);
+  return roundMoney(totalPremiumReceived - totalObligation);
 }
 
 /**
@@ -74,10 +83,7 @@ function generateScenario(
  * Evaluate Short Put strategy with all metrics
  */
 export function evaluateShortPut(params: OptionStrategyInput): OptionStrategyOutput {
-  // Validation
-  if (params.optionType !== "PUT" || params.direction !== "SHORT") {
-    throw new Error("evaluateShortPut requires PUT type and SHORT direction");
-  }
+  validateOptionInput(params, "PUT", "SHORT");
   
   const strikePrice = params.strikePrice;
   const premium = params.premiumPerContract;
@@ -85,18 +91,17 @@ export function evaluateShortPut(params: OptionStrategyInput): OptionStrategyOut
   const numberOfContracts = params.numberOfContracts;
   const daysToExp = params.daysToExpiration;
   
-  // Calculate break-even (strike - premium, exact to 0.01)
-  const breakEven = parseFloat((strikePrice - premium).toFixed(2));
+  const breakEven = roundMoney(strikePrice - premium);
   
   // Calculate max profit (premium received if price stays >= strike)
-  const maxProfit = premium * numberOfContracts * 100;
+  const maxProfit = totalPremium(premium, numberOfContracts);
   
   // Calculate max loss (strike - premium if price falls to 0)
   // More realistic: assume price falls to 50% of current
-  const maxLoss = (strikePrice - premium) * numberOfContracts * 100;
+  const maxLoss = assignmentValue(Math.max(strikePrice - premium, 0), numberOfContracts);
   
   // Required margin (approximately 20% of strike value)
-  const requiredMargin = parseFloat((strikePrice * numberOfContracts * 100 * 0.2).toFixed(2));
+  const requiredMargin = calculateShortOptionMargin(currentPrice, strikePrice, premium, numberOfContracts, "PUT");
   
   // Generate scenarios
   const scenarioAtm = generateScenario(
@@ -128,11 +133,8 @@ export function evaluateShortPut(params: OptionStrategyInput): OptionStrategyOut
   
   // Probability ITM at expiration (probability of assignment)
   // For puts, ITM means price < strike
-  const volatility = params.assumptions.impliedVolatility ?? 25; // default 25%
-  const expectedMove = (volatility / 100) * currentPrice * Math.sqrt(daysToExp / 365);
-  const strikeDiff = strikePrice - currentPrice;
-  const zScore = strikeDiff / (expectedMove || 1);
-  const probItm = Math.max(0, Math.min(1, 0.5 + zScore / Math.sqrt(2 * Math.PI)));
+  const volatility = params.assumptions.impliedVolatility ?? 25;
+  const probItm = probabilityInTheMoney("PUT", currentPrice, strikePrice, volatility, daysToExp);
   
   // Warnings for Short Put
   const warnings: string[] = [];
@@ -141,6 +143,9 @@ export function evaluateShortPut(params: OptionStrategyInput): OptionStrategyOut
   }
   if (currentPrice < strikePrice) {
     warnings.push("⚠️ Short Put está ITM (In-The-Money). Mayor riesgo de asignación.");
+  }
+  if (params.availableCapital < requiredMargin) {
+    warnings.push(`⚠️ Capital disponible insuficiente para margen estimado: ${requiredMargin} USD.`);
   }
   warnings.push("⚠️ Máxima pérdida = " + maxLoss + " USD. Requiere capital de margen suficiente.");
   
@@ -193,18 +198,19 @@ export function calculateShortPutResult(params: OptionStrategyInput | OptionStra
   maxProfit: number;
   requiredMargin: number;
 } {
-  const strikePrice = params.strikePrice;
-  // Handle both property name variants
-  const premium = "premiumPerContract" in params ? params.premiumPerContract : (params as any).premium;
-  const numberOfContracts = "numberOfContracts" in params ? params.numberOfContracts : (params as any).quantity;
+  const normalized = normalizeOptionStrategyInput(params, "PUT", "SHORT");
+  validateOptionInput(normalized, "PUT", "SHORT");
+  const strikePrice = normalized.strikePrice;
+  const premium = normalized.premiumPerContract;
+  const numberOfContracts = normalized.numberOfContracts;
   
-  const breakEven = strikePrice - premium;
-  const maxLoss = (strikePrice - premium) * numberOfContracts * 100;
-  const maxProfit = premium * numberOfContracts * 100;
-  const requiredMargin = parseFloat((strikePrice * numberOfContracts * 100 * 0.2).toFixed(2));
+  const breakEven = roundMoney(strikePrice - premium);
+  const maxLoss = assignmentValue(Math.max(strikePrice - premium, 0), numberOfContracts);
+  const maxProfit = totalPremium(premium, numberOfContracts);
+  const requiredMargin = calculateShortOptionMargin(normalized.currentPrice, strikePrice, premium, numberOfContracts, "PUT");
   
   return {
-    ticker: params.ticker,
+    ticker: normalized.ticker,
     optionType: "put",
     direction: "short",
     breakEven,

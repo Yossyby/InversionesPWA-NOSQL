@@ -221,6 +221,7 @@ export function MainDashboard() {
                 onResult={handleSimulationResult}
                 onFundamentalRows={handleFundamentalRows}
                 onProjectionResult={handleProjectionResult}
+                isFundamentalMode={showFundamental}
               />
               {simulationVerdict && (
                 <div className="card" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.5rem" }}>

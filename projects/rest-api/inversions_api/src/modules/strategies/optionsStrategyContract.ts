@@ -128,9 +128,12 @@ export interface OptionStrategyContract {
   // Premium and quantity (simplified names)
   premium: number; // Price per contract
   quantity: number; // Number of contracts
+  premiumPerContract?: number; // Alias used by full strategy evaluators
+  numberOfContracts?: number; // Alias used by full strategy evaluators
   
   // Capital and risk
   capitalAvailable?: number; // Alias for availableCapital
+  availableCapital?: number; // Full evaluator field alias
   riskTolerance?: "low" | "medium" | "high" | "LOW" | "MEDIUM" | "HIGH";
   
   // Optional

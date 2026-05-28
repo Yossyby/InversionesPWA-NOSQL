@@ -1,4 +1,12 @@
 import type { OptionStrategyInput, OptionStrategyOutput, PriceScenario, OptionStrategyContract } from "../optionsStrategyContract";
+import {
+  assignmentValue,
+  normalizeOptionStrategyInput,
+  probabilityInTheMoney,
+  roundMoney,
+  totalPremium,
+  validateOptionInput
+} from "./optionMath";
 
 /**
  * T084: Long Put Strategy Core
@@ -21,9 +29,9 @@ export function calculateLongPutPnL(
 ): number {
   const priceToUse = atPrice ?? currentPrice;
   const intrinsicValue = Math.max(strikePrice - priceToUse, 0);
-  const totalIntrinsicValue = intrinsicValue * numberOfContracts * 100;
-  const totalPremiumPaid = premium * numberOfContracts * 100;
-  return totalIntrinsicValue - totalPremiumPaid;
+  const totalIntrinsicValue = assignmentValue(intrinsicValue, numberOfContracts);
+  const totalPremiumPaid = totalPremium(premium, numberOfContracts);
+  return roundMoney(totalIntrinsicValue - totalPremiumPaid);
 }
 
 /**
@@ -73,10 +81,7 @@ function generateScenario(
  * Evaluate Long Put strategy with all metrics
  */
 export function evaluateLongPut(params: OptionStrategyInput): OptionStrategyOutput {
-  // Validation
-  if (params.optionType !== "PUT" || params.direction !== "LONG") {
-    throw new Error("evaluateLongPut requires PUT type and LONG direction");
-  }
+  validateOptionInput(params, "PUT", "LONG");
   
   const strikePrice = params.strikePrice;
   const premium = params.premiumPerContract;
@@ -84,17 +89,16 @@ export function evaluateLongPut(params: OptionStrategyInput): OptionStrategyOutp
   const numberOfContracts = params.numberOfContracts;
   const daysToExp = params.daysToExpiration;
   
-  // Calculate break-even (strike - premium, exact to 0.01)
-  const breakEven = parseFloat((strikePrice - premium).toFixed(2));
+  const breakEven = roundMoney(strikePrice - premium);
   
   // Calculate max profit (strike - premium if price falls to 0)
-  const maxProfit = (strikePrice - premium) * numberOfContracts * 100;
+  const maxProfit = assignmentValue(Math.max(strikePrice - premium, 0), numberOfContracts);
   
   // Calculate max loss (premium paid)
-  const maxLoss = premium * numberOfContracts * 100;
+  const maxLoss = totalPremium(premium, numberOfContracts);
   
   // Required margin (for long options, margin = premium paid)
-  const requiredMargin = premium * numberOfContracts * 100;
+  const requiredMargin = maxLoss;
   
   // Generate scenarios
   const scenarioAtm = generateScenario(
@@ -126,11 +130,8 @@ export function evaluateLongPut(params: OptionStrategyInput): OptionStrategyOutp
   
   // Probability ITM at expiration (simplified)
   // For puts, ITM means price < strike
-  const volatility = params.assumptions.impliedVolatility ?? 25; // default 25%
-  const expectedMove = (volatility / 100) * currentPrice * Math.sqrt(daysToExp / 365);
-  const strikeDiff = strikePrice - currentPrice;
-  const zScore = strikeDiff / (expectedMove || 1);
-  const probItm = Math.max(0, Math.min(1, 0.5 + zScore / Math.sqrt(2 * Math.PI)));
+  const volatility = params.assumptions.impliedVolatility ?? 25;
+  const probItm = probabilityInTheMoney("PUT", currentPrice, strikePrice, volatility, daysToExp);
   
   // Warnings
   const warnings: string[] = [];
@@ -139,6 +140,9 @@ export function evaluateLongPut(params: OptionStrategyInput): OptionStrategyOutp
   }
   if (params.daysToExpiration < 7) {
     warnings.push("Menos de 7 días para expiración. Riesgo de decay acelerado.");
+  }
+  if (params.availableCapital < requiredMargin) {
+    warnings.push(`Capital disponible insuficiente. Requiere al menos ${requiredMargin} USD para cubrir la prima.`);
   }
   if (breakEven < 0) {
     warnings.push("Break-even por debajo de 0. Estrategia requiere caída muy significativa para ser rentable.");
@@ -192,18 +196,19 @@ export function calculateLongPutResult(params: OptionStrategyInput | OptionStrat
   maxProfit: number;
   requiredMargin: number;
 } {
-  const strikePrice = params.strikePrice;
-  // Handle both property name variants
-  const premium = "premiumPerContract" in params ? params.premiumPerContract : (params as any).premium;
-  const numberOfContracts = "numberOfContracts" in params ? params.numberOfContracts : (params as any).quantity;
+  const normalized = normalizeOptionStrategyInput(params, "PUT", "LONG");
+  validateOptionInput(normalized, "PUT", "LONG");
+  const strikePrice = normalized.strikePrice;
+  const premium = normalized.premiumPerContract;
+  const numberOfContracts = normalized.numberOfContracts;
   
-  const breakEven = strikePrice - premium;
-  const maxLoss = premium * numberOfContracts * 100;
-  const maxProfit = (strikePrice - premium) * numberOfContracts * 100;
-  const requiredMargin = premium * numberOfContracts * 100;
+  const breakEven = roundMoney(strikePrice - premium);
+  const maxLoss = totalPremium(premium, numberOfContracts);
+  const maxProfit = assignmentValue(Math.max(strikePrice - premium, 0), numberOfContracts);
+  const requiredMargin = maxLoss;
   
   return {
-    ticker: params.ticker,
+    ticker: normalized.ticker,
     optionType: "put",
     direction: "long",
     breakEven,

@@ -1,4 +1,13 @@
 import type { OptionStrategyInput, OptionStrategyOutput, PriceScenario, OptionStrategyContract } from "../optionsStrategyContract";
+import {
+  assignmentValue,
+  calculateShortOptionMargin,
+  normalizeOptionStrategyInput,
+  probabilityInTheMoney,
+  roundMoney,
+  totalPremium,
+  validateOptionInput
+} from "./optionMath";
 
 /**
  * T085: Short Call Strategy Core
@@ -23,9 +32,9 @@ export function calculateShortCallPnL(
 ): number {
   const priceToUse = atPrice ?? currentPrice;
   const assignmentObligationValue = Math.max(priceToUse - strikePrice, 0);
-  const totalObligation = assignmentObligationValue * numberOfContracts * 100;
-  const totalPremiumReceived = premium * numberOfContracts * 100;
-  return totalPremiumReceived - totalObligation;
+  const totalObligation = assignmentValue(assignmentObligationValue, numberOfContracts);
+  const totalPremiumReceived = totalPremium(premium, numberOfContracts);
+  return roundMoney(totalPremiumReceived - totalObligation);
 }
 
 /**
@@ -76,10 +85,7 @@ function generateScenario(
  * Evaluate Short Call strategy with all metrics
  */
 export function evaluateShortCall(params: OptionStrategyInput): OptionStrategyOutput {
-  // Validation
-  if (params.optionType !== "CALL" || params.direction !== "SHORT") {
-    throw new Error("evaluateShortCall requires CALL type and SHORT direction");
-  }
+  validateOptionInput(params, "CALL", "SHORT");
   
   const strikePrice = params.strikePrice;
   const premium = params.premiumPerContract;
@@ -87,11 +93,9 @@ export function evaluateShortCall(params: OptionStrategyInput): OptionStrategyOu
   const numberOfContracts = params.numberOfContracts;
   const daysToExp = params.daysToExpiration;
   
-  // Calculate break-even (strike + premium, exact to 0.01)
-  const breakEven = parseFloat((strikePrice + premium).toFixed(2));
+  const breakEven = roundMoney(strikePrice + premium);
   
-  // Calculate max profit (premium received if price stays <= strike)
-  const maxProfit = premium * numberOfContracts * 100;
+  const maxProfit = totalPremium(premium, numberOfContracts);
   
   // Calculate max loss (UNLIMITED - critical warning)
   // For reporting purposes, assume worst case: price reaches strike * 2
@@ -106,7 +110,7 @@ export function evaluateShortCall(params: OptionStrategyInput): OptionStrategyOu
   
   // Required margin (approximately 20% of strike value, simplified)
   // Real brokers use more complex models (SPAN, etc.)
-  const requiredMargin = parseFloat((strikePrice * numberOfContracts * 100 * 0.2).toFixed(2));
+  const requiredMargin = calculateShortOptionMargin(currentPrice, strikePrice, premium, numberOfContracts, "CALL");
   
   // Generate scenarios
   const scenarioAtm = generateScenario(
@@ -133,22 +137,20 @@ export function evaluateShortCall(params: OptionStrategyInput): OptionStrategyOu
     numberOfContracts
   );
   
-  // Risk-adjusted return (profit / max loss) - infinite for short calls
-  const riskAdjustedReturn = Infinity; // Undefined due to unlimited loss
+  const riskAdjustedReturn = 0; // Unlimited max loss, so this is intentionally capped.
   
-  // Probability ITM at expiration (probability of assignment)
-  const volatility = params.assumptions.impliedVolatility ?? 25; // default 25%
-  const expectedMove = (volatility / 100) * currentPrice * Math.sqrt(daysToExp / 365);
-  const strikeDiff = strikePrice - currentPrice;
-  const zScore = strikeDiff / (expectedMove || 1);
-  const probItm = Math.max(0, Math.min(1, 0.5 + zScore / Math.sqrt(2 * Math.PI)));
+  const volatility = params.assumptions.impliedVolatility ?? 25;
+  const probItm = probabilityInTheMoney("CALL", currentPrice, strikePrice, volatility, daysToExp);
   
   // CRITICAL WARNINGS for Short Call
   const warnings: string[] = [];
   warnings.push("⚠️ RIESGO CRÍTICO: Pérdida de capital ILIMITADA si el precio sube por encima del break-even.");
   warnings.push("⚠️ Requiere capital de margen significativo (mínimo " + requiredMargin + " USD).");
   if (currentPrice > strikePrice) {
-    warnings.push("⚠️ IMPORTANTE: Short Call está OTM (Out-of-The-Money) actualmente. Riesgo de asignación temprana.");
+    warnings.push("⚠️ IMPORTANTE: Short Call está ITM (In-The-Money) actualmente. Riesgo de asignación temprana.");
+  }
+  if (params.availableCapital < requiredMargin) {
+    warnings.push(`⚠️ Capital disponible insuficiente para margen estimado: ${requiredMargin} USD.`);
   }
   warnings.push("⚠️ Recomendado SOLO con convicción alta en rango de precios acotado o con cobertura (hedge).");
   
@@ -165,7 +167,7 @@ export function evaluateShortCall(params: OptionStrategyInput): OptionStrategyOu
     scenarioAtm,
     scenarioPlus5,
     scenarioMinus5,
-    riskAdjustedReturn: Infinity,
+    riskAdjustedReturn,
     probabilityItm: probItm,
     warnings,
     calculatedAt: new Date().toISOString(),
@@ -201,18 +203,19 @@ export function calculateShortCallResult(params: OptionStrategyInput | OptionStr
   maxProfit: number;
   requiredMargin: number;
 } {
-  const strikePrice = params.strikePrice;
-  // Handle both property name variants
-  const premium = "premiumPerContract" in params ? params.premiumPerContract : (params as any).premium;
-  const numberOfContracts = "numberOfContracts" in params ? params.numberOfContracts : (params as any).quantity;
+  const normalized = normalizeOptionStrategyInput(params, "CALL", "SHORT");
+  validateOptionInput(normalized, "CALL", "SHORT");
+  const strikePrice = normalized.strikePrice;
+  const premium = normalized.premiumPerContract;
+  const numberOfContracts = normalized.numberOfContracts;
   
-  const breakEven = strikePrice + premium;
+  const breakEven = roundMoney(strikePrice + premium);
   const maxLoss = Number.POSITIVE_INFINITY;
-  const maxProfit = premium * numberOfContracts * 100;
-  const requiredMargin = parseFloat((strikePrice * numberOfContracts * 100 * 0.2).toFixed(2));
+  const maxProfit = totalPremium(premium, numberOfContracts);
+  const requiredMargin = calculateShortOptionMargin(normalized.currentPrice, strikePrice, premium, numberOfContracts, "CALL");
   
   return {
-    ticker: params.ticker,
+    ticker: normalized.ticker,
     optionType: "call",
     direction: "short",
     breakEven,

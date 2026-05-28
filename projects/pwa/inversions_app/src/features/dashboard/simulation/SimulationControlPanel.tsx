@@ -11,37 +11,24 @@ import {
   type SimulationResponse,
   type ConfluenceSignalRow
 } from "../../../services/signals/confluenceTableApi";
-import { StrategySelector } from "./StrategySelector";
 import { RiskToleranceToggle } from "./RiskToleranceToggle";
 import { ExecuteSimulationButton } from "./ExecuteSimulationButton";
 import { FundamentalAnalysisModal, type AnalysisResult } from "./FundamentalAnalysisModal";
+import { useSignalStore } from "../../../store/signals";
 
 interface Props {
   ticket: string;
   onResult: (result: SimulationResponse) => void;
   onFundamentalRows?: (rows: ConfluenceSignalRow[]) => void;
   onProjectionResult?: (result: AnalysisResult) => void;
+  isFundamentalMode?: boolean;
 }
 
 type Preset = "2A" | "1A" | "6M" | "3M" | "1M";
-type AnalysisMode = "A_TECNICO" | "A_FUNDAMENTAL" | "A_INDICADORES";
-type InvestmentProfile = "Value" | "Growth" | "Dividend" | "Quality" | "Aggressive";
-type InvestmentHorizon = "Corto plazo" | "Mediano plazo" | "Largo plazo";
-type OptionsStrategy = "Short Call" | "Short Put" | "Long Call" | "Long Put";
 type DataSource = "FMP" | "Finnhub" | "SimFin" | "Finviz" | "Yahoo Finance";
 
 const PRESETS: Preset[] = ["2A", "1A", "6M", "3M", "1M"];
 const TIMEFRAMES: Array<"1m" | "5m" | "15m" | "1h" | "4h" | "1d"> = ["1m", "5m", "15m", "1h", "4h", "1d"];
-
-const ANALYSIS_MODES: { id: AnalysisMode; label: string }[] = [
-  { id: "A_TECNICO", label: "A_TECNICO" },
-  { id: "A_FUNDAMENTAL", label: "A_FUNDAMENTAL" },
-  { id: "A_INDICADORES", label: "A_INDICADORES" }
-];
-
-const INVESTMENT_PROFILES: InvestmentProfile[] = ["Value", "Growth", "Dividend", "Quality", "Aggressive"];
-const INVESTMENT_HORIZONS: InvestmentHorizon[] = ["Corto plazo", "Mediano plazo", "Largo plazo"];
-const OPTIONS_STRATEGIES: OptionsStrategy[] = ["Short Call", "Short Put", "Long Call", "Long Put"];
 
 const DATA_SOURCES: { id: DataSource; sourceId: string; available: boolean }[] = [
   { id: "FMP",          sourceId: "fmp",          available: true },
@@ -88,20 +75,6 @@ const chipStyle = (active: boolean): React.CSSProperties => ({
   letterSpacing: "0.02em"
 });
 
-const modeBtnStyle = (active: boolean): React.CSSProperties => ({
-  padding: "0.4rem 1rem",
-  border: `1px solid ${active ? "var(--color-accent, #ffd43b)" : "var(--color-border)"}`,
-  borderRadius: "var(--radius-sm, 4px)",
-  background: active ? "var(--color-accent, #ffd43b)" : "transparent",
-  color: active ? "#000" : "var(--color-text-muted)",
-  fontWeight: active ? 800 : 500,
-  fontSize: "0.75rem",
-  cursor: "pointer",
-  textTransform: "uppercase" as const,
-  letterSpacing: "0.04em",
-  transition: "all 0.15s"
-});
-
 const sectionLabelStyle: React.CSSProperties = {
   fontSize: "0.7rem",
   color: "var(--color-text-muted)",
@@ -134,14 +107,12 @@ const toggleKnobStyle = (active: boolean): React.CSSProperties => ({
   transition: "left 0.2s"
 });
 
-export function SimulationControlPanel({ ticket, onResult, onFundamentalRows, onProjectionResult }: Props) {
-  const [analysisMode, setAnalysisMode] = useState<AnalysisMode>("A_TECNICO");
-
+export function SimulationControlPanel({ ticket, onResult, onFundamentalRows, onProjectionResult, isFundamentalMode = false }: Props) {
+  const { selectedOptionsStrategy } = useSignalStore();
   const [preset, setPreset] = useState<Preset>("3M");
   const [estrategiaFrom, setEstrategiaFrom] = useState(isoToday());
   const [estrategiaTo, setEstrategiaTo] = useState(isoPlusDays(30));
   const [temporalidad, setTemporalidad] = useState<"1m" | "5m" | "15m" | "1h" | "4h" | "1d">("1h");
-  const [estrategia, setEstrategia] = useState("IRON_CONDOR");
   const [tolerancia, setTolerancia] = useState<"BAJO" | "MEDIO" | "ALTO">("MEDIO");
   const [coresOn, setCoresOn] = useState<Record<CoreId, boolean>>(
     ALL_CORES.reduce((acc, c) => ({ ...acc, [c]: true }), {} as Record<CoreId, boolean>)
@@ -157,22 +128,15 @@ export function SimulationControlPanel({ ticket, onResult, onFundamentalRows, on
     setFundamentalTicker(ticket);
   }, [ticket]);
 
-  const [investmentProfile, setInvestmentProfile] = useState<InvestmentProfile>("Value");
-  const [horizon, setHorizon] = useState<InvestmentHorizon>("Largo plazo");
   const [metricsOn, setMetricsOn] = useState<Record<string, boolean>>(
     FUNDAMENTAL_METRICS.reduce((acc, m) => ({ ...acc, [m]: true }), {} as Record<string, boolean>)
   );
   const [comparisonsOn, setComparisonsOn] = useState<Record<string, boolean>>(
     COMPARISON_OPTIONS.reduce((acc, c) => ({ ...acc, [c]: true }), {} as Record<string, boolean>)
   );
-  const [optionsStrategy, setOptionsStrategy] = useState<OptionsStrategy>("Long Call");
   const [dataSource, setDataSource] = useState<DataSource>("FMP");
   const [modalResult, setModalResult] = useState<AnalysisResult | null>(null);
   const [showModal, setShowModal] = useState(false);
-  const [roeMin, setRoeMin] = useState("");
-  const [revenueGrowthMin, setRevenueGrowthMin] = useState("");
-  const [debtEquityMax, setDebtEquityMax] = useState("");
-  const [netMarginMin, setNetMarginMin] = useState("");
 
   const [projectionFrom, setProjectionFrom] = useState(isoToday());
   const [projectionTo, setProjectionTo] = useState(isoPlusDays(30));
@@ -197,7 +161,7 @@ export function SimulationControlPanel({ ticket, onResult, onFundamentalRows, on
         runtimeMode: "OFFLINE",
         coresHabilitados: ALL_CORES.filter((c) => coresOn[c]),
         indicadoresHabilitados: ALL_SUBCORES.filter((s) => indicadoresOn[s]),
-        estrategia,
+        estrategia: "IRON_CONDOR",
         toleranciaRiesgo: tolerancia
       };
       const result = await runSimulation(payload);
@@ -220,10 +184,10 @@ export function SimulationControlPanel({ ticket, onResult, onFundamentalRows, on
         body: JSON.stringify({
           ticker: fundamentalTicker || ticket,
           source: src?.sourceId ?? "fmp",
-          investmentProfile,
-          horizon,
+          investmentProfile: "Quality",
+          horizon: "Mediano plazo",
           selectedMetrics: Object.entries(metricsOn).filter(([, v]) => v).map(([k]) => k),
-          strategy: optionsStrategy,
+          strategy: selectedOptionsStrategy?.name ?? "Long Call",
           comparisons: Object.entries(comparisonsOn).filter(([, v]) => v).map(([k]) => k),
           projectionFrom,
           projectionTo
@@ -256,25 +220,12 @@ export function SimulationControlPanel({ ticket, onResult, onFundamentalRows, on
 
   return (
     <section className="card" style={{ display: "grid", gap: "0.75rem" }}>
-      {/* ── Mode selector ─────────────────────────────── */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "0.5rem" }}>
         <h2 style={{ margin: 0 }}>Panel de Control · Analisis</h2>
-        <div style={{ display: "flex", gap: "0.4rem" }}>
-          {ANALYSIS_MODES.map((m) => (
-            <button
-              key={m.id}
-              type="button"
-              style={modeBtnStyle(analysisMode === m.id)}
-              onClick={() => setAnalysisMode(m.id)}
-            >
-              {m.label}
-            </button>
-          ))}
-        </div>
       </div>
 
       {/* ── A_TECNICO / A_INDICADORES panel ───────────── */}
-      {analysisMode !== "A_FUNDAMENTAL" && (
+      {!isFundamentalMode && (
         <>
           <div style={{ display: "grid", gap: "0.75rem", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
             <label style={{ display: "flex", flexDirection: "column", gap: "0.25rem", fontSize: "0.75rem" }}>
@@ -297,7 +248,6 @@ export function SimulationControlPanel({ ticket, onResult, onFundamentalRows, on
                 {TIMEFRAMES.map((t) => <option key={t} value={t}>{t}</option>)}
               </select>
             </label>
-            <StrategySelector value={estrategia} onChange={setEstrategia} />
             <RiskToleranceToggle value={tolerancia} onChange={setTolerancia} />
           </div>
 
@@ -328,7 +278,7 @@ export function SimulationControlPanel({ ticket, onResult, onFundamentalRows, on
       )}
 
       {/* ── A_FUNDAMENTAL panel ────────────────────────── */}
-      {analysisMode === "A_FUNDAMENTAL" && (
+      {isFundamentalMode && (
         <div style={{ display: "grid", gap: "1rem" }}>
           {/* Empresa a Analizar */}
           <div>
@@ -408,30 +358,6 @@ export function SimulationControlPanel({ ticket, onResult, onFundamentalRows, on
             })()}
           </div>
 
-          {/* Perfil de Inversión */}
-          <div>
-            <p style={sectionLabelStyle}>Perfil de Inversión</p>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
-              {INVESTMENT_PROFILES.map((p) => (
-                <button key={p} type="button" style={chipStyle(investmentProfile === p)} onClick={() => setInvestmentProfile(p)}>
-                  {p}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Horizonte de Inversión */}
-          <div>
-            <p style={sectionLabelStyle}>Horizonte de Inversión</p>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
-              {INVESTMENT_HORIZONS.map((h) => (
-                <button key={h} type="button" style={chipStyle(horizon === h)} onClick={() => setHorizon(h)}>
-                  {h}
-                </button>
-              ))}
-            </div>
-          </div>
-
           {/* Métricas Fundamentales */}
           <div>
             <p style={sectionLabelStyle}>Métricas Fundamentales</p>
@@ -441,41 +367,6 @@ export function SimulationControlPanel({ ticket, onResult, onFundamentalRows, on
                   <input type="checkbox" checked={metricsOn[m]} onChange={() => toggleMetric(m)} style={{ accentColor: "var(--color-accent, #ffd43b)", width: 15, height: 15 }} />
                   <span style={{ color: metricsOn[m] ? "var(--color-text)" : "var(--color-text-muted)" }}>{m}</span>
                 </label>
-              ))}
-            </div>
-          </div>
-
-          {/* Filtros Fundamentales */}
-          <div>
-            <p style={sectionLabelStyle}>Filtros Fundamentales</p>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: "0.6rem" }}>
-              <label style={{ display: "flex", flexDirection: "column", gap: "0.2rem", fontSize: "0.75rem" }}>
-                <span style={{ color: "var(--color-text-muted)", fontWeight: 600, textTransform: "uppercase" }}>ROE mínimo (%)</span>
-                <input type="number" placeholder="ej. 15" value={roeMin} onChange={(e) => setRoeMin(e.target.value)} />
-              </label>
-              <label style={{ display: "flex", flexDirection: "column", gap: "0.2rem", fontSize: "0.75rem" }}>
-                <span style={{ color: "var(--color-text-muted)", fontWeight: 600, textTransform: "uppercase" }}>Revenue Growth mínimo (%)</span>
-                <input type="number" placeholder="ej. 10" value={revenueGrowthMin} onChange={(e) => setRevenueGrowthMin(e.target.value)} />
-              </label>
-              <label style={{ display: "flex", flexDirection: "column", gap: "0.2rem", fontSize: "0.75rem" }}>
-                <span style={{ color: "var(--color-text-muted)", fontWeight: 600, textTransform: "uppercase" }}>Debt/Equity máximo</span>
-                <input type="number" placeholder="ej. 0.5" value={debtEquityMax} onChange={(e) => setDebtEquityMax(e.target.value)} />
-              </label>
-              <label style={{ display: "flex", flexDirection: "column", gap: "0.2rem", fontSize: "0.75rem" }}>
-                <span style={{ color: "var(--color-text-muted)", fontWeight: 600, textTransform: "uppercase" }}>Margen Neto mínimo (%)</span>
-                <input type="number" placeholder="ej. 5" value={netMarginMin} onChange={(e) => setNetMarginMin(e.target.value)} />
-              </label>
-            </div>
-          </div>
-
-          {/* Estrategia de Opciones */}
-          <div>
-            <p style={sectionLabelStyle}>Estrategia de Opciones</p>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
-              {OPTIONS_STRATEGIES.map((s) => (
-                <button key={s} type="button" style={chipStyle(optionsStrategy === s)} onClick={() => setOptionsStrategy(s)}>
-                  {s}
-                </button>
               ))}
             </div>
           </div>
@@ -517,7 +408,7 @@ export function SimulationControlPanel({ ticket, onResult, onFundamentalRows, on
       )}
 
       <div style={{ display: "flex", justifyContent: "flex-end" }}>
-        {analysisMode === "A_FUNDAMENTAL" ? (
+        {isFundamentalMode ? (
           <button
             type="button"
             disabled={loading}

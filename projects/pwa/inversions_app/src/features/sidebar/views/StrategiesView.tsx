@@ -3,6 +3,7 @@
 
 import React, { useState } from "react";
 import { TrendingUp, TrendingDown, ChevronDown, ChevronUp, Shield, ArrowDown } from "lucide-react";
+import { useSignalStore } from "../../../store/signals";
 
 interface StrategyConfig {
   id: "short-put" | "long-put" | "short-call" | "long-call";
@@ -59,6 +60,10 @@ interface StrategyForm {
   premium: string;
   quantity: string;
   expirationDate: string;
+  availableCapital: string;
+  impliedVolatility: string;
+  timeDecayModel: "LINEAR" | "EXPONENTIAL";
+  interestRate: string;
 }
 
 interface StrategyResult {
@@ -71,6 +76,7 @@ interface StrategyResult {
 }
 
 export function StrategiesView() {
+  const { selectedOptionsStrategy, setSelectedOptionsStrategy } = useSignalStore();
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [forms, setForms] = useState<Record<string, StrategyForm>>({});
   const [results, setResults] = useState<Record<string, StrategyResult>>({});
@@ -78,20 +84,35 @@ export function StrategiesView() {
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const toggle = (id: string) => {
+    const strategy = STRATEGIES.find((item) => item.id === id);
+    if (strategy) {
+      setSelectedOptionsStrategy({ id: strategy.id, name: strategy.name });
+    }
     setExpandedId((prev) => (prev === id ? null : id));
   };
 
   const getForm = (id: string): StrategyForm =>
-    forms[id] ?? { ticker: "AAPL", strikePrice: "", premium: "", quantity: "1", expirationDate: "" };
+    forms[id] ?? {
+      ticker: "AAPL",
+      strikePrice: "",
+      premium: "",
+      quantity: "1",
+      expirationDate: "",
+      availableCapital: "10000",
+      impliedVolatility: "25",
+      timeDecayModel: "LINEAR",
+      interestRate: "4"
+    };
 
   const setFormField = (id: string, field: keyof StrategyForm, value: string) => {
     setForms((prev) => ({ ...prev, [id]: { ...getForm(id), [field]: value } }));
   };
 
   const calculate = async (strategy: StrategyConfig) => {
+    setSelectedOptionsStrategy({ id: strategy.id, name: strategy.name });
     const form = getForm(strategy.id);
-    if (!form.strikePrice || !form.premium) {
-      setErrors((prev) => ({ ...prev, [strategy.id]: "Strike y prima son requeridos." }));
+    if (!form.strikePrice || !form.premium || !form.quantity || !form.expirationDate || !form.availableCapital) {
+      setErrors((prev) => ({ ...prev, [strategy.id]: "Strike, prima, contratos, expiración y capital son requeridos." }));
       return;
     }
     setLoadingId(strategy.id);
@@ -99,6 +120,7 @@ export function StrategiesView() {
     try {
       const direction = strategy.id.startsWith("long") ? "long" : "short";
       const optionType = strategy.id.endsWith("put") ? "put" : "call";
+      const daysToExpiration = Math.max(1, Math.ceil((new Date(form.expirationDate).getTime() - Date.now()) / 86_400_000));
       const res = await fetch(strategy.endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -108,8 +130,19 @@ export function StrategiesView() {
           direction,
           strikePrice: Number(form.strikePrice),
           premium: Number(form.premium),
+          premiumPerContract: Number(form.premium),
           quantity: Number(form.quantity || 1),
-          expirationDate: form.expirationDate || undefined,
+          numberOfContracts: Number(form.quantity || 1),
+          expirationDate: form.expirationDate,
+          daysToExpiration,
+          capitalAvailable: Number(form.availableCapital),
+          availableCapital: Number(form.availableCapital),
+          riskTolerance: "medium",
+          assumptions: {
+            impliedVolatility: Number(form.impliedVolatility || 25),
+            timeDecayModel: form.timeDecayModel,
+            interestRate: Number(form.interestRate || 4)
+          }
         }),
       });
       if (!res.ok) {
@@ -138,6 +171,7 @@ export function StrategiesView() {
     <div style={{ padding: "var(--space-sm)", display: "flex", flexDirection: "column", gap: "var(--space-xs)" }}>
       {STRATEGIES.map((strategy) => {
         const isExpanded = expandedId === strategy.id;
+        const isSelected = selectedOptionsStrategy?.id === strategy.id;
         const form = getForm(strategy.id);
         const result = results[strategy.id];
         const isLoading = loadingId === strategy.id;
@@ -148,7 +182,7 @@ export function StrategiesView() {
             key={strategy.id}
             style={{
               background: "var(--color-surface-raised)",
-              border: "1px solid var(--color-border)",
+              border: `1px solid ${isSelected ? "var(--color-accent)" : "var(--color-border)"}`,
               borderRadius: "var(--radius-sm)",
               overflow: "hidden",
             }}
@@ -219,7 +253,9 @@ export function StrategiesView() {
                     />
                   </label>
                   <label style={{ display: "flex", flexDirection: "column", gap: "0.15rem", fontSize: "var(--font-size-xs)" }}>
-                    <span style={{ color: "var(--color-text-muted)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em" }}>Prima $</span>
+                    <span style={{ color: "var(--color-text-muted)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                      {strategy.id.startsWith("long") ? "Prima pagada $" : "Prima recibida $"}
+                    </span>
                     <input
                       type="number"
                       value={form.premium}
@@ -232,13 +268,73 @@ export function StrategiesView() {
                     <span style={{ color: "var(--color-text-muted)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em" }}>Cantidad</span>
                     <input
                       type="number"
+                      min="1"
+                      step="1"
                       value={form.quantity}
                       onChange={(e) => setFormField(strategy.id, "quantity", e.target.value)}
                       placeholder="1"
                       style={{ fontSize: "var(--font-size-xs)", padding: "0.2rem 0.4rem" }}
                     />
                   </label>
+                  <label style={{ display: "flex", flexDirection: "column", gap: "0.15rem", fontSize: "var(--font-size-xs)" }}>
+                    <span style={{ color: "var(--color-text-muted)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em" }}>Expiración</span>
+                    <input
+                      type="date"
+                      value={form.expirationDate}
+                      onChange={(e) => setFormField(strategy.id, "expirationDate", e.target.value)}
+                      style={{ fontSize: "var(--font-size-xs)", padding: "0.2rem 0.4rem" }}
+                    />
+                  </label>
+                  <label style={{ display: "flex", flexDirection: "column", gap: "0.15rem", fontSize: "var(--font-size-xs)" }}>
+                    <span style={{ color: "var(--color-text-muted)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em" }}>Capital $</span>
+                    <input
+                      type="number"
+                      value={form.availableCapital}
+                      onChange={(e) => setFormField(strategy.id, "availableCapital", e.target.value)}
+                      placeholder="10000"
+                      style={{ fontSize: "var(--font-size-xs)", padding: "0.2rem 0.4rem" }}
+                    />
+                  </label>
                 </div>
+
+                <details style={{ border: "1px solid var(--color-border-subtle)", borderRadius: "var(--radius-xs)", padding: "0.35rem 0.45rem" }}>
+                  <summary style={{ cursor: "pointer", color: "var(--color-text-muted)", fontSize: "var(--font-size-xs)", fontWeight: 700, textTransform: "uppercase" }}>
+                    Supuestos avanzados
+                  </summary>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.3rem", marginTop: "0.4rem" }}>
+                    <label style={{ display: "flex", flexDirection: "column", gap: "0.15rem", fontSize: "var(--font-size-xs)" }}>
+                      <span style={{ color: "var(--color-text-muted)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em" }}>Vol. implícita %</span>
+                      <input
+                        type="number"
+                        value={form.impliedVolatility}
+                        onChange={(e) => setFormField(strategy.id, "impliedVolatility", e.target.value)}
+                        placeholder="25"
+                        style={{ fontSize: "var(--font-size-xs)", padding: "0.2rem 0.4rem" }}
+                      />
+                    </label>
+                    <label style={{ display: "flex", flexDirection: "column", gap: "0.15rem", fontSize: "var(--font-size-xs)" }}>
+                      <span style={{ color: "var(--color-text-muted)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em" }}>Theta decay</span>
+                      <select
+                        value={form.timeDecayModel}
+                        onChange={(e) => setFormField(strategy.id, "timeDecayModel", e.target.value as StrategyForm["timeDecayModel"])}
+                        style={{ fontSize: "var(--font-size-xs)", padding: "0.2rem 0.4rem" }}
+                      >
+                        <option value="LINEAR">LINEAR</option>
+                        <option value="EXPONENTIAL">EXPONENTIAL</option>
+                      </select>
+                    </label>
+                    <label style={{ display: "flex", flexDirection: "column", gap: "0.15rem", fontSize: "var(--font-size-xs)" }}>
+                      <span style={{ color: "var(--color-text-muted)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em" }}>Tasa interés %</span>
+                      <input
+                        type="number"
+                        value={form.interestRate}
+                        onChange={(e) => setFormField(strategy.id, "interestRate", e.target.value)}
+                        placeholder="4"
+                        style={{ fontSize: "var(--font-size-xs)", padding: "0.2rem 0.4rem" }}
+                      />
+                    </label>
+                  </div>
+                </details>
 
                 <button
                   onClick={() => void calculate(strategy)}

@@ -7,17 +7,21 @@ import { evaluateLongCall } from "./options/longCall";
 import { evaluateLongPut } from "./options/longPut";
 import { evaluateShortCall } from "./options/shortCall";
 import { evaluateShortPut } from "./options/shortPut";
+import { normalizeOptionStrategyInput } from "./options/optionMath";
 
 export function buildOptionStrategyResult(
   params: OptionStrategyContract
 ): OptionStrategyResult {
-  if (params.direction === "long") {
-    return (params.optionType === "call"
+  const direction = String(params.direction).toLowerCase();
+  const optionType = String(params.optionType).toLowerCase();
+
+  if (direction === "long") {
+    return (optionType === "call"
       ? calculateLongCallResult(params)
       : calculateLongPutResult(params)) as unknown as OptionStrategyResult;
   }
 
-  return (params.optionType === "call"
+  return (optionType === "call"
     ? calculateShortCallResult(params)
     : calculateShortPutResult(params)) as unknown as OptionStrategyResult;
 }
@@ -28,29 +32,7 @@ export function buildOptionStrategyResult(
 export function buildOptionStrategyCandidates(
   baseParams: OptionStrategyContract
 ): OptionStrategyResult[] {
-  const rawParams = baseParams as OptionStrategyContract & Partial<OptionStrategyInput>;
-
-  // Normalize parameters to OptionStrategyInput format for evaluation functions
-  const normalizedParams: OptionStrategyInput = {
-    ticker: baseParams.ticker,
-    optionType: (baseParams.optionType?.toUpperCase() as any) || "CALL",
-    direction: (baseParams.direction?.toUpperCase() as any) || "LONG",
-    strikePrice: baseParams.strikePrice,
-    currentPrice: baseParams.currentPrice ?? baseParams.strikePrice,
-    expirationDate: baseParams.expirationDate,
-    daysToExpiration: (baseParams as any).daysToExpiration || 30,
-    premiumPerContract:
-      typeof rawParams.premiumPerContract === "number"
-        ? rawParams.premiumPerContract
-        : baseParams.premium || 0,
-    numberOfContracts:
-      typeof rawParams.numberOfContracts === "number"
-        ? rawParams.numberOfContracts
-        : baseParams.quantity || 1,
-    availableCapital: baseParams.capitalAvailable || 10000,
-    riskTolerance: ((baseParams.riskTolerance?.toUpperCase() as any) || "MEDIUM") as any,
-    assumptions: baseParams.assumptions || { impliedVolatility: 25 }
-  };
+  const normalizedParams: OptionStrategyInput = normalizeOptionStrategyInput(baseParams);
 
   const longCall = evaluateLongCall({ ...normalizedParams, optionType: "CALL", direction: "LONG" });
   const longPut = evaluateLongPut({ ...normalizedParams, optionType: "PUT", direction: "LONG" });

@@ -13,6 +13,7 @@ import { evaluateLongCall } from "./options/longCall";
 import { evaluateLongPut } from "./options/longPut";
 import { evaluateShortCall } from "./options/shortCall";
 import { evaluateShortPut } from "./options/shortPut";
+import { normalizeOptionStrategyInput } from "./options/optionMath";
 
 export interface DailySimulationPoint {
   day: number;
@@ -60,21 +61,7 @@ export function simulateStrategy(
   volatilityPathDaily?: number[],
   daysToSimulate?: number
 ): SimulationResult {
-  // Normalize parameters to OptionStrategyInput format
-  const normalizedParams: OptionStrategyInput = {
-    ticker: params.ticker,
-    optionType: (params.optionType?.toUpperCase() as any) || "CALL",
-    direction: (params.direction?.toUpperCase() as any) || "LONG",
-    strikePrice: params.strikePrice,
-    currentPrice: (params as any).currentPrice || params.strikePrice,
-    expirationDate: params.expirationDate,
-    daysToExpiration: (params as any).daysToExpiration || 30,
-    premiumPerContract: ("premiumPerContract" in params) ? params.premiumPerContract : (params as any).premium || 0,
-    numberOfContracts: ("numberOfContracts" in params) ? params.numberOfContracts : (params as any).quantity || 1,
-    availableCapital: (params as any).capitalAvailable || (params as any).availableCapital || 10000,
-    riskTolerance: ((params as any).riskTolerance?.toUpperCase() as any) || "MEDIUM",
-    assumptions: params.assumptions || { impliedVolatility: 25 }
-  };
+  const normalizedParams: OptionStrategyInput = normalizeOptionStrategyInput(params);
   
   // Use defaults if not provided
   const assumptions = normalizedParams.assumptions || { impliedVolatility: 25 };
