@@ -1,7 +1,7 @@
 // FIC: CoverageStrategyModal — parameter form + 4-strategy table + PayoffChart. (EN)
 // FIC: CoverageStrategyModal — formulario de parámetros + tabla de 4 estrategias + PayoffChart. (ES)
 
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { ContentModal } from "../../components/ui/ContentModal";
 import { PayoffChart } from "../../components/coverage/PayoffChart";
 import {
@@ -14,6 +14,7 @@ import { useSignalStore } from "../../store/signals";
 interface Props {
   isOpen: boolean;
   onClose: () => void;
+  initialTicker?: string;
   initialKind?: "protective_put" | "married_put" | "collar_put" | "covered_straddle";
 }
 
@@ -30,10 +31,10 @@ const BADGE_COLORS: Record<string, string> = {
   BAJA: "var(--color-sell)",
 };
 
-export function CoverageStrategyModal({ isOpen, onClose, initialKind }: Props) {
+export function CoverageStrategyModal({ isOpen, onClose, initialTicker, initialKind }: Props) {
   const { selectedInstrument } = useSignalStore();
 
-  const [ticker, setTicker] = useState(selectedInstrument?.symbol ?? "SPY");
+  const [ticker, setTicker] = useState(initialTicker ?? selectedInstrument?.symbol ?? "SPY");
   const [currentPrice, setCurrentPrice] = useState("450");
   const [shares, setShares] = useState("100");
   const [putStrike, setPutStrike] = useState("");
@@ -46,6 +47,15 @@ export function CoverageStrategyModal({ isOpen, onClose, initialKind }: Props) {
   const [selectedKind, setSelectedKind] = useState<string | null>(initialKind ?? null);
 
   const abortRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      setTicker(initialTicker ?? selectedInstrument?.symbol ?? "SPY");
+      setResults(null);
+      setError(null);
+      setSelectedKind(initialKind ?? null);
+    }
+  }, [isOpen, initialTicker, selectedInstrument?.symbol, initialKind]);
 
   async function handleAnalyze() {
     const price = parseFloat(currentPrice);
@@ -212,6 +222,7 @@ export function CoverageStrategyModal({ isOpen, onClose, initialKind }: Props) {
                   style={{
                     cursor: "pointer",
                     backgroundColor: selectedKind === r.kind ? "rgba(73,79,223,0.12)" : "transparent",
+                    borderLeft: selectedKind === r.kind ? "3px solid var(--color-accent)" : "3px solid transparent",
                     transition: "background-color var(--duration-fast) var(--easing-standard)",
                   }}
                 >
@@ -248,6 +259,10 @@ export function CoverageStrategyModal({ isOpen, onClose, initialKind }: Props) {
               ))}
             </tbody>
           </table>
+
+          <p style={{ fontSize: "var(--font-size-xs)", color: "var(--color-text-muted)", margin: "var(--space-sm) 0" }}>
+            Haz clic en una fila para ver su diagrama de payoff
+          </p>
 
           {/* PayoffChart for selected strategy */}
           {selectedResult && payoffPoints.length > 0 && (

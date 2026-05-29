@@ -60,6 +60,7 @@ export function ConfluenceSignalsTable({ symbol, rows: rowsProp, activeStrategy 
   const [detailRow, setDetailRow] = useState<ConfluenceSignalRow | null>(null);
   const [modalTicker, setModalTicker] = useState<string | null>(null);
   const [coverageModalOpen, setCoverageModalOpen] = useState(false);
+  const [coverageTicker, setCoverageTicker] = useState<string | null>(null);
   const [stubCore, setStubCore] = useState<string | null>(null);
 
   const { setSelectedSignal } = useSignalStore();
@@ -201,6 +202,7 @@ export function ConfluenceSignalsTable({ symbol, rows: rowsProp, activeStrategy 
                                 style={{ padding: "0.28rem 0.7rem", fontSize: "0.72rem", color: "var(--color-accent)" }}
                                 onClick={(event) => {
                                   event.stopPropagation();
+                                  setCoverageTicker(row.ticket ?? null);
                                   setCoverageModalOpen(true);
                                 }}
                               >
@@ -385,6 +387,7 @@ export function ConfluenceSignalsTable({ symbol, rows: rowsProp, activeStrategy 
       <CoverageStrategyModal
         isOpen={coverageModalOpen}
         onClose={() => setCoverageModalOpen(false)}
+        initialTicker={coverageTicker ?? undefined}
       />
 
       <InstitutionalDetailModal
