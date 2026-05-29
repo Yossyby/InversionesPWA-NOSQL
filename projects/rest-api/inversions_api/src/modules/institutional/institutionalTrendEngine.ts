@@ -3,6 +3,7 @@
 
 import type { InstitutionalAnalysisContract } from "./institutionalContract";
 import type { InstitutionalResolveResult } from "./institutionalDataService";
+import type { RealCandle } from "./yahooChartParser";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -41,13 +42,26 @@ interface Candle { close: number; volume: number }
 // ─── Engine ───────────────────────────────────────────────────────────────────
 
 export class InstitutionalTrendEngine {
+  // FIC: Extract real candles from yahoo_chart observation in preResolvedResult. (EN)
+  // FIC: Extrae velas reales de la observación yahoo_chart en preResolvedResult. (ES)
+  private extractRealCandles(preResolvedResult?: InstitutionalResolveResult): Candle[] | null {
+    const chartObs = preResolvedResult?.observations.find(
+      (o) => o.sourceId === "yahoo_chart" && o.status !== "failed"
+    );
+    if (!chartObs?.rawSourceData) return null;
+    const raw = chartObs.rawSourceData["candles"];
+    if (!Array.isArray(raw) || raw.length < 20) return null;
+    const candles = raw as RealCandle[];
+    return candles.map((c) => ({ close: c.close, volume: c.volume }));
+  }
+
   // FIC: Main analysis — computes SMAs, crossover, Pearson volume correlation, trend strength. (EN)
   // FIC: Análisis principal — calcula SMAs, cruce, correlación de Pearson con volumen, fuerza de tendencia. (ES)
   async analyze(
     request: InstitutionalAnalysisContract,
     preResolvedResult?: InstitutionalResolveResult
   ): Promise<InstitutionalTrendResult> {
-    const candles = this.buildFallbackCandles(request.ticker);
+    const candles = this.extractRealCandles(preResolvedResult) ?? this.buildFallbackCandles(request.ticker);
     const closes = candles.map((c) => c.close);
     const volumes = candles.map((c) => c.volume);
 

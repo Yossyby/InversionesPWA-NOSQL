@@ -19,6 +19,7 @@ import { ExpirationAnalysisEngine } from "../../modules/institutional/expiration
 import { parseSecEdgar13fReal, parseFinraShortInterestReal, ensureFinraCache } from "../../modules/institutional/realSourceParsers";
 import { parseYahooOptionsFlow } from "../../modules/institutional/yahooOptionsParser";
 import { parseYahooInstitutional } from "../../modules/institutional/yahooInstitutionalParser";
+import { parseYahooChart } from "../../modules/institutional/yahooChartParser";
 import { getYahooSession } from "../../modules/institutional/yahooCrumbSession";
 
 // ─── Route context (singleton) ────────────────────────────────────────────────
@@ -39,29 +40,36 @@ export function getInstitutionalRouteContext(): InstitutionalRouteContext {
 
   const sources: DataSourceConfig[] = [
     {
-      sourceId: "sec_edgar_13f",
+      sourceId: "yahoo_chart",
       priority: 1,
+      cacheTtlMs: 300_000,
+      rateLimit: { maxRequests: 30, windowMs: 60_000 },
+      parse: parseYahooChart,
+    },
+    {
+      sourceId: "sec_edgar_13f",
+      priority: 2,
       cacheTtlMs: 600_000,
       rateLimit: { maxRequests: 10, windowMs: 60_000 },
       parse: parseSecEdgar13fReal,
     },
     {
       sourceId: "finra_short_interest",
-      priority: 2,
+      priority: 3,
       cacheTtlMs: 600_000,
       rateLimit: { maxRequests: 10, windowMs: 60_000 },
       parse: parseFinraShortInterestReal,
     },
     {
       sourceId: "yahoo_options_flow",
-      priority: 3,
+      priority: 4,
       cacheTtlMs: 120_000,
       rateLimit: { maxRequests: 20, windowMs: 60_000 },
       parse: parseYahooOptionsFlow,
     },
     {
       sourceId: "yahoo_institutional",
-      priority: 4,
+      priority: 5,
       cacheTtlMs: 300_000,
       rateLimit: { maxRequests: 20, windowMs: 60_000 },
       parse: parseYahooInstitutional,
@@ -70,10 +78,13 @@ export function getInstitutionalRouteContext(): InstitutionalRouteContext {
 
   const dataService = new InstitutionalDataService(sources);
 
-  // FIC: Pre-warm FINRA cache and Yahoo session in background — first real request arrives with warm caches. (EN)
-  // FIC: Pre-calienta caché FINRA y sesión Yahoo en background — el primer request llega con cachés calientes. (ES)
+  // FIC: Pre-warm caches in background — first real request arrives with warm data. (EN)
+  // FIC: Pre-calienta cachés en background — el primer request llega con datos calientes. (ES)
   ensureFinraCache().catch(() => {});
   getYahooSession().catch(() => {});
+  // Pre-warm chart cache for the two most common tickers
+  dataService.resolveSingleSource(sources[0], "SPY", "daily").catch(() => {});
+  dataService.resolveSingleSource(sources[0], "QQQ", "daily").catch(() => {});
 
   _context = {
     dataService,
@@ -145,7 +156,7 @@ export function buildInstitutionalAnalysisContractFromRequest(
       count: 50 + (seed % 200),
       notional: volume * 12,
     },
-    sourceIds: ["sec_edgar_13f", "finra_short_interest", "yahoo_options_flow", "yahoo_institutional"],
+    sourceIds: ["yahoo_chart", "sec_edgar_13f", "finra_short_interest", "yahoo_options_flow", "yahoo_institutional"],
     requestedAt: new Date().toISOString(),
     analysisId: randomUUID(),
   });

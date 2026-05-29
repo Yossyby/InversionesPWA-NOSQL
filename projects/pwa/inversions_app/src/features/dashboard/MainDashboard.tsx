@@ -14,7 +14,6 @@ import { AppShell } from "../../layouts/AppShell";
 import { ActivityBar } from "../../components/ui/ActivityBar";
 import { LeftPanel } from "../sidebar/LeftPanel";
 import { Badge } from "../../components/ui/Badge";
-import { InstitutionalDetailModal } from "../institutional/InstitutionalDetailModal";
 import type { ConfluenceSignalRow, SimulationResponse, CoreId } from "../../services/signals/confluenceTableApi";
 import { useSignalStore } from "../../store/signals";
 import { useAppShellStore } from "../../store/appShell";
@@ -29,11 +28,10 @@ export function MainDashboard() {
   const [simulationVerdict, setSimulationVerdict] = useState<{ verdict?: unknown; score?: number; degraded?: boolean } | null>(null);
   const [activeSimulationStrategy, setActiveSimulationStrategy] = useState("IRON_CONDOR");
   const [institutionalCoreWasActive, setInstitutionalCoreWasActive] = useState(false);
-  const [instModalTicker, setInstModalTicker] = useState<string | null>(null);
   const [copilotOpen, setCopilotOpen] = useState(false);
 
   const { selectedInstrument, runtimeMode, operationalMode } = useSignalStore();
-  const { } = useAppShellStore();
+  const { setAnalysisCategory } = useAppShellStore();
   const { results: institutionalResults, loading: institutionalLoading, errors: institutionalErrors } = useInstitutionalStore();
 
   const selectedSymbol = selectedInstrument?.symbol ?? "SPY";
@@ -61,6 +59,9 @@ export function MainDashboard() {
     const institutionalActive = activeCoreIds.includes("A_INSTITUCIONAL");
     setInstitutionalCoreWasActive(institutionalActive);
 
+    // Activate institutional columns in the confluence table immediately
+    if (institutionalActive) setAnalysisCategory("institutional");
+
     if (!institutionalActive || !selectedSymbol) return;
 
     const controller = new AbortController();
@@ -73,8 +74,7 @@ export function MainDashboard() {
         }
       });
     return () => controller.abort();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedSymbol]);
+  }, [selectedSymbol, setAnalysisCategory]);
 
   // FIC: Badge color for runtime mode — cobalt for demo, warning for real, muted for offline. (EN)
   const modeBadgeColor =
@@ -274,13 +274,6 @@ export function MainDashboard() {
         activityBar={<ActivityBar />}
         leftPanel={<LeftPanel />}
         main={mainContent}
-      />
-
-      <InstitutionalDetailModal
-        isOpen={instModalTicker !== null}
-        ticker={instModalTicker ?? ""}
-        data={instModalTicker ? (institutionalResults[instModalTicker.toUpperCase()] ?? null) : null}
-        onClose={() => setInstModalTicker(null)}
       />
 
       {/* FAB — Copilot IA */}
