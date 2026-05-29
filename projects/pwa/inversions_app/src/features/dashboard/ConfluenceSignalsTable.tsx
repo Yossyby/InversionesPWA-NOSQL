@@ -13,6 +13,7 @@ import {
 import { ObservationCell } from "./ObservationCell";
 import { OptionGreeksRow } from "./OptionGreeksRow";
 import { InstitutionalDetailModal } from "../institutional/InstitutionalDetailModal";
+import { CoverageStrategyModal } from "../coverage/CoverageStrategyModal";
 
 // FIC: Columnas con ancho estable; la tabla se desplaza horizontalmente antes de aplastar texto.
 const TABLE_COLUMNS: Array<{ key: keyof ConfluenceSignalRow | "estrategia" | "observacion"; label: string; width: number }> = [
@@ -58,6 +59,8 @@ export function ConfluenceSignalsTable({ symbol, rows: rowsProp, activeStrategy 
   const [meta, setMeta] = useState<Omit<ConfluenceTableResponse, "rows"> | null>(null);
   const [detailRow, setDetailRow] = useState<ConfluenceSignalRow | null>(null);
   const [modalTicker, setModalTicker] = useState<string | null>(null);
+  const [coverageModalOpen, setCoverageModalOpen] = useState(false);
+  const [stubCore, setStubCore] = useState<string | null>(null);
 
   const { setSelectedSignal } = useSignalStore();
   const { analysisCategory } = useAppShellStore();
@@ -146,14 +149,24 @@ export function ConfluenceSignalsTable({ symbol, rows: rowsProp, activeStrategy 
                 const rowKey = `${row.core}-${row.subCore ?? "agg"}-${idx}`;
                 const instData = institutionalResults[row.ticket?.toUpperCase() ?? ""];
                 const onClick = () => {
-                  if (showInstitutionalColumns && instData) {
-                    setModalTicker(row.ticket ?? null);
-                  } else {
+                  if (row.core === "A_INSTITUCIONAL") {
+                    if (showInstitutionalColumns && instData) {
+                      setModalTicker(row.ticket ?? null);
+                    } else {
+                      setSelectedSignal({
+                        id: rowKey,
+                        symbol: row.ticket,
+                        metadata: { evidencia_refs: row.evidencia_refs, core: row.core, subCore: row.subCore }
+                      } as SelectedSignal);
+                    }
+                  } else if (row.core === "A_INDICADORES") {
                     setSelectedSignal({
                       id: rowKey,
                       symbol: row.ticket,
                       metadata: { evidencia_refs: row.evidencia_refs, core: row.core, subCore: row.subCore }
                     } as SelectedSignal);
+                  } else {
+                    setStubCore(row.core);
                   }
                 };
 
@@ -169,17 +182,32 @@ export function ConfluenceSignalsTable({ symbol, rows: rowsProp, activeStrategy 
                       let content: React.ReactNode;
                       if (col.key === "observacion") {
                         content = (
-                          <button
-                            className="btn-ghost"
-                            type="button"
-                            style={{ padding: "0.28rem 0.7rem", fontSize: "0.72rem" }}
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              setDetailRow(row);
-                            }}
-                          >
-                            Ver detalle
-                          </button>
+                          <span style={{ display: "flex", gap: "0.4rem" }}>
+                            <button
+                              className="btn-ghost"
+                              type="button"
+                              style={{ padding: "0.28rem 0.7rem", fontSize: "0.72rem" }}
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                setDetailRow(row);
+                              }}
+                            >
+                              Ver detalle
+                            </button>
+                            {row.core === "A_INSTITUCIONAL" && (
+                              <button
+                                className="btn-ghost"
+                                type="button"
+                                style={{ padding: "0.28rem 0.7rem", fontSize: "0.72rem", color: "var(--color-accent)" }}
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  setCoverageModalOpen(true);
+                                }}
+                              >
+                                Coberturas
+                              </button>
+                            )}
+                          </span>
                         );
                       } else if (col.key === "estrategia") {
                         content = <span className="badge badge-hold">{(activeStrategy ?? "N/A").replace(/_/g, " ")}</span>;
@@ -317,6 +345,47 @@ export function ConfluenceSignalsTable({ symbol, rows: rowsProp, activeStrategy 
           </div>
         </div>
       )}
+
+      {stubCore && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.62)",
+            zIndex: 45,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "1.25rem"
+          }}
+          onClick={() => setStubCore(null)}
+        >
+          <div
+            className="card"
+            style={{
+              width: "min(420px, 92vw)",
+              border: "1px solid var(--color-border)",
+              boxShadow: "0 24px 80px rgba(0,0,0,0.55)",
+              textAlign: "center",
+              padding: "2rem"
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 style={{ marginBottom: "0.5rem" }}>{stubCore.replace("A_", "")}</h2>
+            <p style={{ color: "var(--color-text-muted)", fontSize: "0.85rem", marginBottom: "1.25rem" }}>
+              Módulo en construcción — próximamente disponible.
+            </p>
+            <button className="btn-ghost" type="button" onClick={() => setStubCore(null)}>Cerrar</button>
+          </div>
+        </div>
+      )}
+
+      <CoverageStrategyModal
+        isOpen={coverageModalOpen}
+        onClose={() => setCoverageModalOpen(false)}
+      />
 
       <InstitutionalDetailModal
         isOpen={modalTicker !== null}
