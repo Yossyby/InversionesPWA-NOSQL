@@ -135,6 +135,8 @@ export const CANONICAL_ESTRATEGIAS = [
   "STRADDLE",
   "STRANGLE",
   "BUTTERFLY",
+  "IRON_BUTTERFLY",
+  "CONDOR",
   "COVERED_CALL"
 ] as const;
 

@@ -44,6 +44,8 @@ export const KNOWN_ESTRATEGIAS = new Set<string>([
   "STRADDLE",
   "STRANGLE",
   "BUTTERFLY",
+  "IRON_BUTTERFLY",
+  "CONDOR",
   "COVERED_CALL"
 ]);
 
