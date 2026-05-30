@@ -1,0 +1,163 @@
+import { useEffect, useState } from "react";
+import { AlertTriangle, BarChart3, CheckCircle2, KeyRound, Newspaper, Radio, RefreshCw, ShieldCheck } from "lucide-react";
+import { analyzeNewsSources, getNewsConfluence, type NewsAnalysisAggregate, type NewsConfluenceResponse, type NewsProviderStatus, type NewsSourceInput } from "../../services/news/newsApi";
+import { SourceInput } from "./SourceInput";
+import { SourceList } from "./SourceList";
+import { AnalysisResult } from "./AnalysisResult";
+import "../styles/NewsSourcesAnalyzer.css";
+
+interface NewsSourcesAnalyzerProps {
+  symbol?: string;
+}
+
+function ProviderPill({ provider }: { provider: NewsProviderStatus }) {
+  const stateClass = provider.enabled ? (provider.ok ? "is-online" : "is-warning") : "is-offline";
+  const stateText = provider.enabled ? (provider.ok ? `${provider.count} noticias` : "falló") : "sin key";
+  const Icon = provider.enabled ? (provider.ok ? CheckCircle2 : AlertTriangle) : KeyRound;
+
+  return (
+    <div className={`tnmt-provider-pill ${stateClass}`} title={provider.message}>
+      <div className="tnmt-provider-pill__top">
+        <Icon size={15} />
+        <span>{provider.label}</span>
+      </div>
+      <strong>{stateText}</strong>
+      <small>{provider.message}</small>
+    </div>
+  );
+}
+
+function ProviderStatusSummary({ providers }: { providers: NewsProviderStatus[] }) {
+  const enabled = providers.filter((provider) => provider.enabled).length;
+  const ok = providers.filter((provider) => provider.enabled && provider.ok).length;
+  const totalNews = providers.reduce((sum, provider) => sum + provider.count, 0);
+
+  return (
+    <div className="tnmt-provider-summary">
+      <span>APIs configuradas: <strong>{enabled}/{providers.length}</strong></span>
+      <span>APIs respondiendo: <strong>{ok}/{providers.length}</strong></span>
+      <span>Noticias recibidas antes de filtrar: <strong>{totalNews}</strong></span>
+    </div>
+  );
+}
+
+export function NewsSourcesAnalyzer({ symbol = "SPY" }: NewsSourcesAnalyzerProps) {
+  const normalizedSymbol = symbol.trim().toUpperCase() || "SPY";
+  const [activeSymbol, setActiveSymbol] = useState(normalizedSymbol);
+  const [sources, setSources] = useState<NewsSourceInput[]>([]);
+  const [confluence, setConfluence] = useState<NewsConfluenceResponse | null>(null);
+  const [manualAnalysis, setManualAnalysis] = useState<NewsAnalysisAggregate | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setActiveSymbol(normalizedSymbol);
+  }, [normalizedSymbol]);
+
+  const canAnalyzeManual = sources.length > 0;
+
+  const loadTickerNews = async () => {
+    const controller = new AbortController();
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await getNewsConfluence(activeSymbol, 12, controller.signal);
+      setConfluence(result);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const analyzeManual = async () => {
+    if (!canAnalyzeManual) return;
+    const controller = new AbortController();
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await analyzeNewsSources(activeSymbol, sources, controller.signal);
+      setManualAnalysis(result);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void loadTickerNews();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeSymbol]);
+
+  return (
+    <section className="tnmt-news-panel" id="noticias-sentimiento">
+      <div className="tnmt-news-hero">
+        <div className="tnmt-news-hero__copy">
+          <div className="tnmt-eyebrow"><Newspaper size={16} /> TEAM-06 · Noticias reales y sentimiento</div>
+          <h2>Confluencia de noticias con fuentes externas reales</h2>
+          <p>
+            El panel muestra de forma visible qué proveedor entregó cada noticia. Consulta Yahoo Finance RSS y, si configuras llaves,
+            también Finnhub, NewsAPI, Polygon y Alpha Vantage. El modo demo fue eliminado.
+          </p>
+          <div className="tnmt-hero-stats">
+            <span><Radio size={15} /> Real only</span>
+            <span><BarChart3 size={15} /> Señal BUY/HOLD/SELL</span>
+            <span><ShieldCheck size={15} /> Evidencia verificable</span>
+          </div>
+        </div>
+        <div className="tnmt-symbol-box">
+          <label>Símbolo</label>
+          <input value={activeSymbol} onChange={(event) => setActiveSymbol(event.target.value.toUpperCase())} />
+          <button type="button" onClick={loadTickerNews} disabled={loading}>
+            <RefreshCw size={16} /> Actualizar
+          </button>
+        </div>
+      </div>
+
+      {confluence?.providerStatus && (
+        <div className="tnmt-provider-status-block" aria-label="Estado de proveedores de noticias">
+          <div className="tnmt-provider-status-block__header">
+            <div>
+              <strong>Estado real de las APIs de noticias</strong>
+              <p>Esto te dice exactamente si Yahoo, Finnhub, NewsAPI, Polygon y Alpha Vantage están entregando datos.</p>
+            </div>
+            <ProviderStatusSummary providers={confluence.providerStatus} />
+          </div>
+          <div className="tnmt-provider-grid">
+            {confluence.providerStatus.map((provider) => <ProviderPill key={provider.id} provider={provider} />)}
+          </div>
+        </div>
+      )}
+
+      <div className="tnmt-news-actions">
+        <button type="button" className="tnmt-primary-button" onClick={loadTickerNews} disabled={loading}>
+          Cargar noticias reales del ticker
+        </button>
+        <button type="button" onClick={analyzeManual} disabled={!canAnalyzeManual || loading}>
+          <ShieldCheck size={16} /> Analizar fuentes pegadas
+        </button>
+      </div>
+
+      {error && <div className="tnmt-error">{error}</div>}
+
+      <div className="tnmt-news-grid">
+        <div className="tnmt-news-column">
+          <SourceInput symbol={activeSymbol} onAdd={(source) => setSources((current) => [...current, source])} />
+          <SourceList
+            sources={sources}
+            onRemove={(id) => setSources((current) => current.filter((source) => (source.id ?? source.url ?? source.title) !== id))}
+            onClear={() => {
+              setSources([]);
+              setManualAnalysis(null);
+            }}
+          />
+        </div>
+        <div className="tnmt-news-column tnmt-news-column--results">
+          {loading && <div className="tnmt-loading">Consultando APIs reales y calculando sentimiento...</div>}
+          <AnalysisResult confluence={confluence} manualAnalysis={manualAnalysis} />
+        </div>
+      </div>
+    </section>
+  );
+}
