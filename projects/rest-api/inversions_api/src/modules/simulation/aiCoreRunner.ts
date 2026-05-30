@@ -48,6 +48,7 @@ export async function runAiCore(params: {
 
   // 1. Si no está configurado Gemini, devolver stub degradado.
   if (!geminiService.isEnabled()) {
+    console.warn("A_IA: Gemini no está habilitado (faltan credenciales o GEMINI_ENABLED=false)");
     return buildIaDegradedStub({
       ticket: params.ticket,
       timeframe: params.timeframe as any,
@@ -129,7 +130,7 @@ Por favor, entrega tu análisis incluyendo la decisión y justificación técnic
       source_input_hash: params.sourceInputHash,
     };
   } catch (error: any) {
-    console.error("Error ejecutando A_IA (Gemini):", error);
+    console.error("A_IA: Error ejecutando Gemini:", error.message || error);
     // 7. Fallback si el LLM falla
     return buildIaDegradedStub({
       ticket: params.ticket,
