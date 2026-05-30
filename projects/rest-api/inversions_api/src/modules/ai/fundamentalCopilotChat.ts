@@ -139,7 +139,7 @@ export class FundamentalCopilotChat {
   private async callOpenAI(apiKey: string, prompt: string, reasoningTrace: string[]): Promise<string | undefined> {
     try {
       const model = process.env.OPENAI_MODEL ?? "gpt-4.1-mini";
-      const response = await fetch("https://api.openai.com/v1/responses", {
+      const response: globalThis.Response = await fetch("https://api.openai.com/v1/responses", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

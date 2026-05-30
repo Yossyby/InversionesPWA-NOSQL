@@ -13,15 +13,15 @@ async function getRealPrice(symbol: string): Promise<number> {
   if (cached && Date.now() - cached.fetchedAt < PRICE_TTL_MS) return cached.price;
 
   try {
-    const res = await fetch(
+    const fetchRes = await fetch(
       `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?range=1d&interval=1d`,
       {
         headers: { "User-Agent": "Mozilla/5.0 (compatible; inversions-app/1.0)" },
         signal: AbortSignal.timeout(5000)
       }
-    );
-    if (!res.ok) return cached?.price ?? 100;
-    const json = await res.json() as any;
+    ) as any;
+    if (!fetchRes.ok) return cached?.price ?? 100;
+    const json = await fetchRes.json() as any;
     const price: number = json?.chart?.result?.[0]?.meta?.regularMarketPrice;
     if (price && price > 0) {
       priceCache.set(symbol, { price, fetchedAt: Date.now() });
