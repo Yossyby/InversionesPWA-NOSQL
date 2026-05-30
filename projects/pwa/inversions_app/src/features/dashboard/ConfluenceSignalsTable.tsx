@@ -12,7 +12,7 @@ import {
 import type { InstitutionalAnalysisResponse } from "../../services/institutional/institutionalApi";
 import { OptionGreeksRow } from "./OptionGreeksRow";
 import { InstitutionalDetailModal } from "../institutional/InstitutionalDetailModal";
-import { MarkdownContent } from "../../components/ui/MarkdownContent";
+import { ObservationsTab } from "./ObservationsTab";
 
 // FIC: Columnas con ancho estable; la tabla se desplaza horizontalmente antes de aplastar texto.
 const TABLE_COLUMNS: Array<{ key: keyof ConfluenceSignalRow | "estrategia"; label: string; width: number }> = [
@@ -84,15 +84,16 @@ export function ConfluenceSignalsTable({ symbol, rows: rowsProp, activeStrategy 
   const [meta, setMeta] = useState<Omit<ConfluenceTableResponse, "rows"> | null>(null);
   const [modalTicker, setModalTicker] = useState<string | null>(null);
   const [modalResumen, setModalResumen] = useState<string>("");
+  const [modalRow, setModalRow] = useState<ConfluenceSignalRow | null>(null);
   const [stubCore, setStubCore] = useState<string | null>(null);
-  const [stubResumen, setStubResumen] = useState<string>("");
+  const [stubRow, setStubRow] = useState<ConfluenceSignalRow | null>(null);
 
   const { setSelectedSignal } = useSignalStore();
   const { results: institutionalResults } = useInstitutionalStore();
 
   useEffect(() => {
     if (!stubCore) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setStubCore(null); };
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") { setStubCore(null); setStubRow(null); } };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, [stubCore]);
@@ -178,6 +179,7 @@ export function ConfluenceSignalsTable({ symbol, rows: rowsProp, activeStrategy 
                     if (instData) {
                       setModalTicker(row.ticket ?? null);
                       setModalResumen(row.resumen_analisis ?? "");
+                      setModalRow(row);
                     } else {
                       setSelectedSignal({
                         id: rowKey,
@@ -193,7 +195,7 @@ export function ConfluenceSignalsTable({ symbol, rows: rowsProp, activeStrategy 
                     } as SelectedSignal);
                   } else {
                     setStubCore(row.core);
-                    setStubResumen(row.resumen_analisis ?? "");
+                    setStubRow(row);
                   }
                 };
 
@@ -256,7 +258,7 @@ export function ConfluenceSignalsTable({ symbol, rows: rowsProp, activeStrategy 
             justifyContent: "center",
             padding: "1.25rem"
           }}
-          onClick={() => setStubCore(null)}
+          onClick={() => { setStubCore(null); setStubRow(null); }}
         >
           <div
             className="card"
@@ -276,38 +278,13 @@ export function ConfluenceSignalsTable({ symbol, rows: rowsProp, activeStrategy 
               Análisis gráfico en construcción — próximamente disponible.
             </p>
 
-            {stubResumen && (
-              <>
-                <div style={{
-                  borderTop: "1px solid var(--color-border-subtle)",
-                  paddingTop: "1rem",
-                  marginBottom: "0.5rem",
-                  flexShrink: 0
-                }}>
-                  <span style={{
-                    fontSize: "0.68rem",
-                    fontWeight: 700,
-                    color: "var(--color-text-muted)",
-                    textTransform: "uppercase",
-                    letterSpacing: "0.07em"
-                  }}>
-                    Observaciones
-                  </span>
-                </div>
-                <div style={{
-                  flex: 1,
-                  overflowY: "auto",
-                  background: "var(--color-surface-raised)",
-                  borderRadius: "var(--radius-sm)",
-                  padding: "0.9rem 1rem",
-                  marginBottom: "1.25rem"
-                }}>
-                  <MarkdownContent content={stubResumen} />
-                </div>
-              </>
+            {stubRow && (
+              <div style={{ flex: 1, overflowY: "auto", marginBottom: "1.25rem" }}>
+                <ObservationsTab row={stubRow} activeStrategy={activeStrategy} />
+              </div>
             )}
 
-            <button className="btn-ghost" type="button" onClick={() => setStubCore(null)} style={{ flexShrink: 0, alignSelf: "flex-end" }}>
+            <button className="btn-ghost" type="button" onClick={() => { setStubCore(null); setStubRow(null); }} style={{ flexShrink: 0, alignSelf: "flex-end" }}>
               Cerrar
             </button>
           </div>
@@ -316,10 +293,11 @@ export function ConfluenceSignalsTable({ symbol, rows: rowsProp, activeStrategy 
 
       <InstitutionalDetailModal
         isOpen={modalTicker !== null}
-        onClose={() => setModalTicker(null)}
+        onClose={() => { setModalTicker(null); setModalRow(null); }}
         ticker={modalTicker ?? ""}
         data={modalTicker ? (institutionalResults[modalTicker.toUpperCase()] ?? null) : null}
         resumen={modalResumen}
+        signalRow={modalRow ?? undefined}
       />
     </section>
   );

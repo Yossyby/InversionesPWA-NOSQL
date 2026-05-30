@@ -5,6 +5,8 @@ import React, { useState } from "react";
 import { ContentModal } from "../../components/ui/ContentModal";
 import { MarkdownContent } from "../../components/ui/MarkdownContent";
 import type { InstitutionalAnalysisResponse } from "../../services/institutional/institutionalApi";
+import type { ConfluenceSignalRow } from "../../services/signals/confluenceTableApi";
+import { ObservationsTab } from "../dashboard/ObservationsTab";
 
 interface Props {
   isOpen: boolean;
@@ -12,6 +14,7 @@ interface Props {
   ticker: string;
   data: InstitutionalAnalysisResponse | null;
   resumen?: string;
+  signalRow?: ConfluenceSignalRow;
 }
 
 type Tab = "zones" | "trends" | "expiration" | "positions" | "observaciones";
@@ -83,7 +86,7 @@ const trendBadge = (direction: "bullish" | "bearish" | "neutral") => {
   );
 };
 
-export function InstitutionalDetailModal({ isOpen, onClose, ticker, data, resumen }: Props) {
+export function InstitutionalDetailModal({ isOpen, onClose, ticker, data, resumen, signalRow }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>("zones");
 
   const subtitle = data
@@ -309,11 +312,11 @@ export function InstitutionalDetailModal({ isOpen, onClose, ticker, data, resume
 
           {activeTab === "observaciones" && (
             <div>
-              {resumen ? (
-                <MarkdownContent content={resumen} />
+              {signalRow ? (
+                <ObservationsTab row={signalRow} />
               ) : (
-                <p style={{ color: "var(--color-text-muted)", fontSize: "var(--font-size-sm)" }}>
-                  Sin observaciones disponibles para este análisis.
+                <p style={{ color: "var(--color-text-muted)", fontSize: "0.8rem" }}>
+                  No hay datos de señal disponibles.
                 </p>
               )}
             </div>
