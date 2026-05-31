@@ -15,6 +15,7 @@ import type { CoverageModalParams } from "./simulation/CoverageParamsModal";
 // FIC: WheelModalParams for lifting confirmed Wheel state up to dashboard. (EN)
 // FIC: WheelModalParams para elevar el estado Wheel confirmado al dashboard. (ES)
 import type { WheelModalParams } from "./simulation/WheelParamsModal";
+import type { SpreadModalParams } from "./simulation/SpreadParamsModal";
 // FIC: Real Technical Analysis Extended panel — replaces placeholder. (EN)
 import { TechnicalAnalysisExtendedSection } from "./TechnicalAnalysisExtendedSection";
 import { NewsSection } from "./NewsSection";
@@ -41,6 +42,7 @@ export function MainDashboard() {
   // FIC: Last confirmed Wheel params — shown as read-only summary in SimulatorStrategySection. (EN)
   // FIC: Últimos params Wheel confirmados — mostrados como resumen de solo lectura en SimulatorStrategySection. (ES)
   const [wheelSummary, setWheelSummary] = useState<WheelModalParams | null>(null);
+  const [spreadRequest, setSpreadRequest] = useState<{ params: SpreadModalParams; kind: string } | null>(null);
   const [institutionalCoreWasActive, setInstitutionalCoreWasActive] = useState(false);
   const [copilotOpen, setCopilotOpen] = useState(false);
   const [selectedStrikeData, setSelectedStrikeData] = useState<{
@@ -80,6 +82,11 @@ export function MainDashboard() {
   // FIC: Eleva los params Wheel confirmados al estado del dashboard para el panel de resumen. (ES)
   const handleWheelConfirmed = useCallback(
     (params: WheelModalParams) => setWheelSummary(params),
+    []
+  );
+
+  const handleSpreadConfirmed = useCallback(
+    (params: SpreadModalParams, kind: string) => setSpreadRequest({ params, kind }),
     []
   );
 
@@ -259,6 +266,7 @@ export function MainDashboard() {
         onStrategyChange={setActiveSimulationStrategy}
         onCoverageParamsConfirmed={handleCoverageConfirmed}
         onWheelParamsConfirmed={handleWheelConfirmed}
+        onSpreadParamsConfirmed={handleSpreadConfirmed}
       />
 
       {/* ── Simulation verdict */}
@@ -439,6 +447,7 @@ export function MainDashboard() {
           ticker={selectedSymbol}
           activeStrategy={activeSimulationStrategy}
           coverageRequest={coverageRequest}
+          spreadRequest={spreadRequest}
           wheelSummary={wheelSummary}
         />
       )}

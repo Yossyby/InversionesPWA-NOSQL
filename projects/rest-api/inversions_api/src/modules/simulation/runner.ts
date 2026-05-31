@@ -42,6 +42,8 @@ export const KNOWN_ESTRATEGIAS = new Set<string>([
   "IRON_CONDOR",
   "BULL_CALL_SPREAD",
   "BEAR_PUT_SPREAD",
+  "BULL_PUT_SPREAD",
+  "BEAR_CALL_SPREAD",
   "BUY_CALL",
   "BUY_PUT",
   "SELL_CALL",
