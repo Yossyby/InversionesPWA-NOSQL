@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   BarChart2, BookOpen, TrendingUp, Building2, Newspaper,
-  Cpu, Play, ChevronDown, Calendar,
+  Cpu, Play, ChevronDown, Calendar, RotateCcw,
 } from "lucide-react";
 import { getMarketQuotes } from "../../../services/signals/marketApi";
 import {
@@ -530,6 +530,8 @@ interface Props {
   onOptionStrategyCalculated?: (analysis: OptionStrategyAnalysis) => void;
   onWheelParamsConfirmed?: (params: WheelModalParams) => void;
   onTermResult?: (data: any) => void;
+  /** FIC: US-3 — invoked when the user resets the panel, so the parent can clear results too. */
+  onClear?: () => void;
 }
 
 // ─── Main component ────────────────────────────────────────────────────────────
@@ -542,6 +544,7 @@ export function SimulationControlPanel({
   onOptionStrategyCalculated,
   onWheelParamsConfirmed,
   onTermResult,
+  onClear,
 }: Props) {
   const [preset, setPreset]               = useState<Preset>("3M");
   const [estrategiaFrom, setEstrategiaFrom] = useState(isoToday());
@@ -552,9 +555,14 @@ export function SimulationControlPanel({
   const [coresOn, setCoresOn]             = useState<Record<CoreId, boolean>>(
     ALL_CORES.reduce((acc, c) => ({ ...acc, [c]: true }), {} as Record<CoreId, boolean>)
   );
+  // FIC: US-2 — technical indicators start DISABLED; the user opts in explicitly. (EN)
+  // FIC: US-2 — los indicadores tecnicos arrancan DESHABILITADOS; el usuario los activa. (ES)
   const [indicadoresOn, setIndicadoresOn] = useState<Record<SubCoreIndicador, boolean>>(
-    ALL_SUBCORES.reduce((acc, s) => ({ ...acc, [s]: true }), {} as Record<SubCoreIndicador, boolean>)
+    ALL_SUBCORES.reduce((acc, s) => ({ ...acc, [s]: false }), {} as Record<SubCoreIndicador, boolean>)
   );
+  // FIC: US-8 — optional historical as-of date; empty means "use latest data". (EN)
+  // FIC: US-8 — fecha historica opcional; vacio significa "usar datos mas recientes". (ES)
+  const [fechaHistorica, setFechaHistorica] = useState<string>("");
   const [loading, setLoading]             = useState(false);
   const [error, setError]                 = useState<string | null>(null);
   const [termModalOpen, setTermModalOpen] = useState(false);
@@ -640,6 +648,23 @@ export function SimulationControlPanel({
   const toggleCore = (c: CoreId)          => setCoresOn((p) => ({ ...p, [c]: !p[c] }));
   const toggleSub  = (s: SubCoreIndicador) => setIndicadoresOn((p) => ({ ...p, [s]: !p[s] }));
 
+  // FIC: US-3 — full control-panel reset to defaults (also clears any prior results). (EN)
+  // FIC: US-3 — reset completo del panel de control a defaults (limpia tambien resultados previos). (ES)
+  const resetPanel = () => {
+    setPreset("3M");
+    setEstrategiaFrom(isoToday());
+    setEstrategiaTo(isoPlusDays(30));
+    setTemporalidad("1h");
+    setEstrategia("IRON_CONDOR");
+    onStrategyChange?.("IRON_CONDOR");
+    setTolerancia("MEDIO");
+    setCoresOn(ALL_CORES.reduce((acc, c) => ({ ...acc, [c]: true }), {} as Record<CoreId, boolean>));
+    setIndicadoresOn(ALL_SUBCORES.reduce((acc, s) => ({ ...acc, [s]: false }), {} as Record<SubCoreIndicador, boolean>));
+    setFechaHistorica("");
+    setError(null);
+    onClear?.();
+  };
+
   const run = async () => {
     setLoading(true);
     setError(null);
@@ -656,6 +681,10 @@ export function SimulationControlPanel({
         indicadoresHabilitados: ALL_SUBCORES.filter((s) => indicadoresOn[s]),
         estrategia,
         toleranciaRiesgo: tolerancia,
+        // FIC: US-7 — only show signals where >=2 indicators coincide. (EN)
+        soloCoincidencias: true,
+        // FIC: US-8 — send the as-of date only when the user picked one. (EN)
+        ...(fechaHistorica ? { fechaHistorica } : {}),
       };
 
       if (isTermStrategy(estrategia)) {
@@ -822,6 +851,18 @@ export function SimulationControlPanel({
             </FieldLabel>
           </div>
 
+          {/* Row 3: Fecha histórica (opcional) — backtest a un día del pasado (US-8) */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: "12px", alignItems: "end" }}>
+            <FieldLabel label="Fecha Histórica (opcional)">
+              <DateInput value={fechaHistorica} onChange={setFechaHistorica} />
+            </FieldLabel>
+            <span style={{ fontSize: "var(--font-size-xs)", color: "var(--color-text-muted)", paddingBottom: "8px", lineHeight: 1.4 }}>
+              {fechaHistorica
+                ? `Las señales se calcularán como si hoy fuera ${fechaHistorica} (vista del pasado).`
+                : "Vacío = usar los datos más recientes. Elige una fecha para ver qué buy/hold/sell hubo ese día."}
+            </span>
+          </div>
+
           {/* Divider */}
           <hr style={{ border: "none", borderTop: "1px solid var(--color-border-subtle)", margin: "2px 0" }} />
 
@@ -902,26 +943,55 @@ export function SimulationControlPanel({
             </strong>
           </span>
 
-          <button
-            type="button"
-            className="sim-exec"
-            onClick={run}
-            disabled={loading}
-          >
-            <span style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              width: 22,
-              height: 22,
-              borderRadius: "6px",
-              background: "rgba(255,255,255,0.18)",
-              flexShrink: 0,
-            }}>
-              <Play size={11} fill="currentColor" strokeWidth={0} />
-            </span>
-            {loading ? "Ejecutando…" : "Ejecutar Simulación"}
-          </button>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", flexShrink: 0 }}>
+            {/* US-3 — full control-panel reset */}
+            <button
+              type="button"
+              onClick={resetPanel}
+              disabled={loading}
+              title="Restablecer el panel a sus valores por defecto y limpiar resultados"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "6px",
+                padding: "9px 16px",
+                background: "transparent",
+                color: "var(--color-text-muted)",
+                border: "1px solid var(--color-border)",
+                borderRadius: "var(--radius-sm)",
+                cursor: loading ? "not-allowed" : "pointer",
+                fontFamily: "var(--font-family)",
+                fontWeight: "var(--font-weight-emphasis)" as any,
+                fontSize: "var(--font-size-xs)",
+                whiteSpace: "nowrap",
+                opacity: loading ? 0.6 : 1,
+              }}
+            >
+              <RotateCcw size={13} />
+              Limpiar panel
+            </button>
+
+            <button
+              type="button"
+              className="sim-exec"
+              onClick={run}
+              disabled={loading}
+            >
+              <span style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: 22,
+                height: 22,
+                borderRadius: "6px",
+                background: "rgba(255,255,255,0.18)",
+                flexShrink: 0,
+              }}>
+                <Play size={11} fill="currentColor" strokeWidth={0} />
+              </span>
+              {loading ? "Ejecutando…" : "Ejecutar Simulación"}
+            </button>
+          </div>
         </div>
       </section>
 

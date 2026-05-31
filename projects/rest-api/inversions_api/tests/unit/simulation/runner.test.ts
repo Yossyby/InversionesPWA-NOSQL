@@ -52,6 +52,24 @@ describe("validateSimulationRequest", () => {
     const err = validateSimulationRequest(buildRequest({ coresHabilitados: ["A_BOGUS" as any] }));
     expect(err?.field).toBe("coresHabilitados");
   });
+
+  it("accepts an absent or empty fechaHistorica", () => {
+    expect(validateSimulationRequest(buildRequest({ fechaHistorica: "" }))).toBeNull();
+    expect(validateSimulationRequest(buildRequest({ fechaHistorica: undefined }))).toBeNull();
+  });
+
+  it("rejects an unparseable fechaHistorica", () => {
+    const err = validateSimulationRequest(buildRequest({ fechaHistorica: "not-a-date" }));
+    expect(err?.field).toBe("fechaHistorica");
+    expect(err?.error_code).toBe("INVALID_SIMULATION_REQUEST");
+  });
+
+  it("rejects a future fechaHistorica", () => {
+    const future = new Date(Date.now() + 7 * 86_400_000).toISOString().slice(0, 10);
+    const err = validateSimulationRequest(buildRequest({ fechaHistorica: future }));
+    expect(err?.error_code).toBe("INVALID_RANGE");
+    expect(err?.field).toBe("fechaHistorica");
+  });
 });
 
 describe("runSimulation", () => {
@@ -82,5 +100,38 @@ describe("runSimulation", () => {
     const b = await runSimulation(buildRequest(), { now: fixed });
     expect(a.verdict.source_input_hash).toBe(b.verdict.source_input_hash);
     expect(a.verdict.score).toBe(b.verdict.score);
+  });
+
+  it("returns signalMetrics consistent with the table (US5)", async () => {
+    const result = await runSimulation(buildRequest());
+    const { buy, sell, hold, total } = result.signalMetrics;
+    expect(total).toBe(result.table.length);
+    expect(buy + sell + hold).toBe(total);
+    expect(buy).toBe(result.table.filter((r) => r.tipoSenal === "CALL").length);
+    expect(sell).toBe(result.table.filter((r) => r.tipoSenal === "PUT").length);
+  });
+
+  it("with a single indicator returns all its rows (no coincidence filter) (US7)", async () => {
+    const result = await runSimulation(
+      buildRequest({ coresHabilitados: ["A_INDICADORES"], indicadoresHabilitados: ["RSI"] })
+    );
+    // Aggregate row + 1 subCore row, none dropped because there is nothing to compare against.
+    const subCoreRows = result.table.filter((r) => r.core === "A_INDICADORES" && r.subCore);
+    expect(subCoreRows.length).toBe(1);
+  });
+
+  it("coincidence filter (default) keeps <= rows than disabling it (US7)", async () => {
+    const base = buildRequest({ coresHabilitados: ["A_INDICADORES"] });
+    const filtered = await runSimulation({ ...base, soloCoincidencias: true });
+    const unfiltered = await runSimulation({ ...base, soloCoincidencias: false });
+    const fSub = filtered.table.filter((r) => r.core === "A_INDICADORES" && r.subCore).length;
+    const uSub = unfiltered.table.filter((r) => r.core === "A_INDICADORES" && r.subCore).length;
+    expect(fSub).toBeLessThanOrEqual(uSub);
+    // Every surviving indicator row shares its tipoSenal with at least one peer.
+    const survivors = filtered.table.filter((r) => r.core === "A_INDICADORES" && r.subCore);
+    for (const row of survivors) {
+      const peers = survivors.filter((r) => r.tipoSenal === row.tipoSenal).length;
+      expect(peers).toBeGreaterThanOrEqual(2);
+    }
   });
 });

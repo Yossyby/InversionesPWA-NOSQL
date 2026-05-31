@@ -55,20 +55,33 @@ function getMockCandles({ symbol, timeframe, count = 300, endTimeMs }: GetCandle
 // FIC: Fetch real OHLC candles from Yahoo Finance — async, returns mock on failure with warning. (EN)
 // FIC: Obtiene velas OHLC reales de Yahoo Finance — async, retorna mock con advertencia si falla. (ES)
 export async function getCandles(opts: GetCandlesOptions): Promise<OhlcBar[]> {
-  const { symbol, timeframe, count = 300 } = opts;
+  const { symbol, timeframe, count = 300, endTimeMs } = opts;
 
   try {
-    const yahooCandles = await fetchYahooOhlc(symbol, timeframe);
-    if (yahooCandles && yahooCandles.length >= Math.min(count, 20)) {
-      const sliced = yahooCandles.slice(-count);
-      return sliced.map((c) => ({
-        time: c.time,
-        open: c.open,
-        high: c.high,
-        low: c.low,
-        close: c.close,
-        volume: c.volume,
-      }));
+    // FIC: When an as-of date is requested, widen the Yahoo range so it reaches well BEFORE that
+    // FIC: past point (enough bars to compute indicators), then keep only candles up to that date
+    // FIC: (US8 — historical snapshot). The 1.6x factor compensates for weekend/holiday gaps. (EN)
+    // FIC: Cuando se pide una fecha as-of, ensancha el rango de Yahoo para llegar bastante ANTES de
+    // FIC: ese punto (suficientes velas para los indicadores) y conserva solo las velas hasta esa
+    // FIC: fecha (US8 — snapshot historico). El factor 1.6x compensa fines de semana/festivos. (ES)
+    const startDateIso = endTimeMs
+      ? new Date(endTimeMs - count * intervalMs(timeframe) * 1.6).toISOString()
+      : undefined;
+    const yahooCandles = await fetchYahooOhlc(symbol, timeframe, globalThis.fetch, startDateIso);
+    if (yahooCandles && yahooCandles.length > 0) {
+      const cutoffSec = endTimeMs ? Math.floor(endTimeMs / 1000) : undefined;
+      const upToDate = cutoffSec ? yahooCandles.filter((c) => c.time <= cutoffSec) : yahooCandles;
+      if (upToDate.length >= Math.min(count, 20)) {
+        const sliced = upToDate.slice(-count);
+        return sliced.map((c) => ({
+          time: c.time,
+          open: c.open,
+          high: c.high,
+          low: c.low,
+          close: c.close,
+          volume: c.volume,
+        }));
+      }
     }
   } catch {
     // fall through to mock

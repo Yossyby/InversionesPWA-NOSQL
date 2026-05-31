@@ -2,7 +2,7 @@
 // FIC: Dashboard operativo principal — layout AppShell de 4 zonas con ActivityBar, LeftPanel y ChatPanel.
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { MessageSquare } from "lucide-react";
+import { MessageSquare, Trash2 } from "lucide-react";
 import { GlobalChatDrawer } from "../../pages/ai/GlobalChatDrawer";
 import { SuperChart } from "./SuperChart";
 import { OptionChainTableConnected } from "../options/OptionChainTable";
@@ -29,12 +29,30 @@ import type { FundamentalAnalysisResponse } from "../../services/fundamental/fun
 import { formatCurrency } from "../../utils/format";
 import { Tooltip } from "../../components/ui/Tooltip";
 
+// FIC: US-5 — compact buy/sell/hold counter chip shown above the confluence table. (EN)
+// FIC: US-5 — chip compacto de conteo compra/venta/hold mostrado sobre la tabla. (ES)
+function SignalMetricChip({ label, value, color }: { label: string; value: number; color: string }) {
+  return (
+    <span style={{
+      display: "inline-flex", alignItems: "center", gap: "6px",
+      padding: "5px 12px", borderRadius: "var(--radius-pill)",
+      border: `1px solid ${color}`, background: "var(--color-surface-raised)",
+      fontSize: "var(--font-size-xs)", fontWeight: "var(--font-weight-emphasis)" as any,
+    }}>
+      <span style={{ width: 7, height: 7, borderRadius: "50%", background: color, display: "inline-block" }} />
+      <span style={{ color: "var(--color-text-muted)" }}>{label}</span>
+      <strong style={{ color, fontVariantNumeric: "tabular-nums" }}>{value}</strong>
+    </span>
+  );
+}
+
 export function MainDashboard() {
   const isTestEnv = import.meta.env.MODE === "test";
   const [timeframe, setTimeframe] = useState("1d");
   const [periodRange, setPeriodRange] = useState<{ startDate: Date; endDate: Date } | null>(null);
   const [simulationRows, setSimulationRows] = useState<ConfluenceSignalRow[] | undefined>(undefined);
   const [simulationVerdict, setSimulationVerdict] = useState<{ verdict?: unknown; score?: number; degraded?: boolean } | null>(null);
+  const [simulationMetrics, setSimulationMetrics] = useState<{ buy: number; sell: number; hold: number; total: number } | null>(null);
   const [activeSimulationStrategy, setActiveSimulationStrategy] = useState("IRON_CONDOR");
   const [coverageRequest, setCoverageRequest] = useState<{ params: CoverageModalParams; kind: string } | null>(null);
   const [optionStrategyAnalysis, setOptionStrategyAnalysis] = useState<OptionStrategyAnalysis | null>(null);
@@ -64,6 +82,7 @@ export function MainDashboard() {
       prevSymbolRef.current = selectedSymbol;
       setSimulationRows(undefined);
       setSimulationVerdict(null);
+      setSimulationMetrics(null);
       setInstitutionalCoreWasActive(false);
       setOptionStrategyAnalysis(null);
       setFundamentalAnalysis(null);
@@ -77,6 +96,27 @@ export function MainDashboard() {
   const handleSimulationResult = useCallback((result: SimulationResponse) => {
     setSimulationRows(result.table);
     setSimulationVerdict(result.verdict);
+    // FIC: US-5 — prefer backend-computed metrics; fall back to a client-side count. (EN)
+    if (result.signalMetrics) {
+      setSimulationMetrics(result.signalMetrics);
+    } else {
+      const rows = result.table ?? [];
+      setSimulationMetrics({
+        buy: rows.filter((r) => r.tipoSenal === "CALL").length,
+        sell: rows.filter((r) => r.tipoSenal === "PUT").length,
+        hold: rows.filter((r) => r.tipoSenal === "HOLD").length,
+        total: rows.length,
+      });
+    }
+  }, []);
+
+  // FIC: US-1 / US-3 — clear the results table and its derived state on demand. (EN)
+  // FIC: US-1 / US-3 — limpia la tabla de resultados y su estado derivado a demanda. (ES)
+  const handleClearTable = useCallback(() => {
+    setSimulationRows(undefined);
+    setSimulationVerdict(null);
+    setSimulationMetrics(null);
+    setInstitutionalCoreWasActive(false);
   }, []);
 
   const handleCoverageConfirmed = useCallback(
@@ -290,6 +330,7 @@ export function MainDashboard() {
         onOptionStrategyCalculated={handleOptionStrategyCalculated}
         onWheelParamsConfirmed={handleWheelConfirmed}
         onTermResult={handleTermResult}
+        onClear={handleClearTable}
       />
 
       {/* ── Simulation verdict */}
@@ -314,12 +355,40 @@ export function MainDashboard() {
           </p>
         </section>
       ) : (
-        <ConfluenceSignalsTable
-          symbol={selectedSymbol}
-          rows={simulationRows}
-          activeStrategy={activeSimulationStrategy}
-          fundamentalAnalysis={fundamentalAnalysis}
-        />
+        <div style={{ display: "grid", gap: "var(--space-sm)" }}>
+          {/* US-5 metrics + US-1 clear table action */}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "var(--space-md)", flexWrap: "wrap" }}>
+            <div style={{ display: "flex", gap: "var(--space-sm)", flexWrap: "wrap" }}>
+              <SignalMetricChip label="Compra (CALL)" value={simulationMetrics?.buy ?? 0} color="var(--color-buy)" />
+              <SignalMetricChip label="Venta (PUT)" value={simulationMetrics?.sell ?? 0} color="var(--color-sell)" />
+              <SignalMetricChip label="Hold" value={simulationMetrics?.hold ?? 0} color="var(--color-text-muted)" />
+              <SignalMetricChip label="Total generadas" value={simulationMetrics?.total ?? (simulationRows?.length ?? 0)} color="var(--color-accent)" />
+            </div>
+            <button
+              type="button"
+              onClick={handleClearTable}
+              title="Limpiar la tabla de resultados"
+              style={{
+                display: "inline-flex", alignItems: "center", gap: "6px",
+                padding: "7px 14px", background: "transparent",
+                color: "var(--color-text-muted)", border: "1px solid var(--color-border)",
+                borderRadius: "var(--radius-sm)", cursor: "pointer",
+                fontSize: "var(--font-size-xs)", fontWeight: "var(--font-weight-emphasis)" as any,
+                whiteSpace: "nowrap",
+              }}
+            >
+              <Trash2 size={13} />
+              Limpiar tabla
+            </button>
+          </div>
+
+          <ConfluenceSignalsTable
+            symbol={selectedSymbol}
+            rows={simulationRows}
+            activeStrategy={activeSimulationStrategy}
+            fundamentalAnalysis={fundamentalAnalysis}
+          />
+        </div>
       )}
 
       {/* ── Institutional analysis section */}
