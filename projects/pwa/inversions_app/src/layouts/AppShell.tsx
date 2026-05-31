@@ -1,7 +1,8 @@
-// FIC: AppShell layout — VS Code-style 4-zone grid: activity bar, left panel, main content, chat panel.
-// FIC: Layout AppShell — cuadrícula de 4 zonas estilo VS Code: barra de actividad, panel izquierdo, contenido principal, panel de chat.
+// FIC: AppShell layout — VS Code-style 3-zone grid: activity bar, left panel, main content.
+// FIC: Layout AppShell — cuadrícula de 3 zonas estilo VS Code: barra de actividad, panel izquierdo, contenido principal.
 
-import React from "react";
+import React, { useState } from "react";
+import { Menu } from "lucide-react";
 import { Drawer } from "../components/ui/Drawer";
 import { useAppShellStore } from "../store/appShell";
 
@@ -9,16 +10,15 @@ interface AppShellProps {
   activityBar: React.ReactNode;
   leftPanel: React.ReactNode;
   main: React.ReactNode;
-  chatPanel: React.ReactNode;
 }
 
 const TABLET_BREAKPOINT = 1023;
 
-export function AppShell({ activityBar, leftPanel, main, chatPanel }: AppShellProps) {
-  const { leftPanelCollapsed, chatPanelCollapsed } = useAppShellStore();
+export function AppShell({ activityBar, leftPanel, main }: AppShellProps) {
+  const { leftPanelCollapsed } = useAppShellStore();
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   const leftWidth = leftPanelCollapsed ? "0px" : "var(--left-panel-width)";
-  const chatWidth = chatPanelCollapsed ? "0px" : "var(--chat-panel-width)";
 
   return (
     <div
@@ -68,35 +68,19 @@ export function AppShell({ activityBar, leftPanel, main, chatPanel }: AppShellPr
           {leftPanel}
         </div>
 
-        {/* Zone 3: Main content — flex:1, resizes when either panel opens/closes */}
+        {/* Zone 3: Main content — flex:1, resizes when left panel opens/closes */}
         <main
           data-testid="app-shell-main"
           style={{ flex: 1, overflow: "auto", minWidth: 0 }}
         >
           {main}
         </main>
-
-        {/* Zone 4: Chat panel — collapses via width transition, resizes main content */}
-        <div
-          data-testid="app-shell-chat-panel"
-          style={{
-            width: chatWidth,
-            flexShrink: 0,
-            overflow: "hidden",
-            transition: "width 0.25s ease",
-            background: "var(--color-surface)",
-            borderLeft: "1px solid var(--color-border)",
-          }}
-          className="app-shell-chat-panel"
-        >
-          {chatPanel}
-        </div>
       </div>
 
       {/* ── Tablet: left panel as Drawer (overlay, no grid reduction) ── */}
       <Drawer
-        isOpen={false}
-        onClose={() => {}}
+        isOpen={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
         position="left"
         width="var(--left-panel-width)"
         title="Panel"
@@ -104,15 +88,38 @@ export function AppShell({ activityBar, leftPanel, main, chatPanel }: AppShellPr
         {leftPanel}
       </Drawer>
 
-      {/* ── Responsive: hide zone 2 & 4 from grid on tablet, show activity bar only ── */}
+      {/* ── Responsive: hide left panel on tablet, show activity bar only ── */}
       <style>{`
         @media (max-width: ${TABLET_BREAKPOINT}px) {
-          .app-shell-left-panel,
-          .app-shell-chat-panel {
+          .app-shell-left-panel {
             display: none !important;
+          }
+          .app-shell-menu-btn {
+            display: flex !important;
           }
         }
       `}</style>
+
+      {/* ── Tablet menu button — opens Drawer, hidden on desktop ── */}
+      <button
+        className="app-shell-menu-btn btn-ghost"
+        onClick={() => setDrawerOpen(true)}
+        aria-label="Abrir panel"
+        style={{
+          position: "fixed",
+          top: "var(--space-sm, 0.5rem)",
+          left: "calc(var(--activity-bar-width) + var(--space-sm, 0.5rem))",
+          zIndex: 800,
+          display: "none",
+          alignItems: "center",
+          justifyContent: "center",
+          width: "2rem",
+          height: "2rem",
+          padding: 0,
+        }}
+      >
+        <Menu size={18} />
+      </button>
     </div>
   );
 }

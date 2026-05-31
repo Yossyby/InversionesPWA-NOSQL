@@ -28,9 +28,20 @@ import { bollingerRouter } from "./routes/indicators/bollinger";
 import { indicatorsConfluenceRouter } from "./routes/indicators/confluence";
 import { indicatorsHealthRouter } from "./routes/indicators/health";
 import { chatExplainRouter } from "./routes/indicators/chatExplain";
+import { technicalAnalysisRouter } from "./routes/indicators/technicalAnalysis";
 import { confluenceTableRouter } from "./routes/signals/confluenceTable";
 import { simulationRunRouter } from "./routes/simulation/run";
 import { indicatorsRateLimit, chatRateLimit } from "./middleware/indicatorsRateLimit";
+import { institutionalAnalysisRouter } from "./routes/institutional/institutionalAnalysis";
+import { regulatoryPositionsRouter } from "./routes/institutional/regulatoryPositions";
+import { institutionalCopilotRouter } from "./routes/ai/institutionalCopilot";
+import volatilityAnalysisRouter from "./routes/ai/volatilityAnalysis";
+import { coverageAnalyzeRouter } from "./routes/coverage/analyze";
+import { coverageCompareRouter } from "./routes/coverage/compare";
+import { coverageSimulateRouter } from "./routes/coverage/simulate";
+import { optionChainRouter } from "./routes/options/chain";
+import { optionExpirationsRouter } from "./routes/options/expirations";
+import { newsRouter } from "./routes/news";
 
 // ── TEAM-08: Complex Strategy Routes ──
 import { alpacaExecutionRouter } from "./routes/strategies/complex/alpacaExecutionRouter";
@@ -79,8 +90,19 @@ app.use("/api/indicators", indicatorsRateLimit, emaRouter);
 app.use("/api/indicators", indicatorsRateLimit, adxRouter);
 app.use("/api/indicators", indicatorsRateLimit, bollingerRouter);
 app.use("/api/indicators", indicatorsRateLimit, indicatorsConfluenceRouter);
+app.use("/api/indicators", indicatorsRateLimit, technicalAnalysisRouter);
 app.use("/api/indicators", indicatorsHealthRouter);
 app.use("/api/chat", chatRateLimit, chatExplainRouter);
+app.use("/api/institutional", institutionalAnalysisRouter);
+app.use("/api/institutional", regulatoryPositionsRouter);
+app.use("/api/ai", institutionalCopilotRouter);
+app.use("/api/ai/volatility", volatilityAnalysisRouter);
+app.use("/api/coverage", coverageAnalyzeRouter);
+app.use("/api/coverage", coverageCompareRouter);
+app.use("/api/coverage", coverageSimulateRouter);
+app.use("/api/options", indicatorsRateLimit, optionChainRouter);
+app.use("/api/options", indicatorsRateLimit, optionExpirationsRouter);
+app.use("/api/news", newsRouter);
 
 // ── TEAM-08: Complex Strategy Routes ──
 app.use("/api/strategies/complex", optionsChainRouter);

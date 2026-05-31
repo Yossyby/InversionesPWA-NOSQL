@@ -121,7 +121,27 @@ export type MetricKey =
   | "FONDO"
   | "FILING_DATE"
   | "PERIODO"
-  | "MODEL_VERSION";
+  | "MODEL_VERSION"
+  // FIC: A_INSTITUCIONAL engine metrics (TEAM-05).
+  | "INST_SCORE"
+  | "SMA_50"
+  | "SMA_200"
+  | "TREND_STRENGTH"
+  | "CONTINUITY_PROB"
+  | "VOLUME_CORR"
+  | "DAYS_TO_OPEX"
+  | "THETA"
+  | "GAMMA"
+  | "EXPIRY_BIAS"
+  | "CALL_PUT_SKEW"
+  | "SOPORTES"
+  | "RESISTENCIAS"
+  | "ATR"
+  | "CANDLES_ANALYZED"
+  // FIC: A_NOTICIAS engine metrics (NEWS).
+  | "CONFIANZA"
+  | "CREDIBILIDAD"
+  | "PROVEEDOR";
 
 // FIC: Observacion estructurada que reemplaza el texto libre de la confluencia v1.
 // FIC: Replaces the free-form metadata bag with a typed observation (FR-020).

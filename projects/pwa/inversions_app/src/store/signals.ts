@@ -17,12 +17,22 @@ export interface SelectedSignal {
   metadata?: Record<string, unknown>;
 }
 
+// FIC: Strike selected from OptionChainTable — shared via store so CoverageStrategyModal can read it. (EN)
+// FIC: Strike seleccionado de OptionChainTable — compartido via store para que CoverageStrategyModal lo lea. (ES)
+export interface SelectedStrike {
+  strike: number;
+  type: "call" | "put";
+  premium: number;
+  iv: number;
+}
+
 type RuntimeMode = "online" | "offline";
 type OperationalMode = "demo" | "real";
 
 interface SignalStoreState {
   selectedInstrument?: SelectedInstrument;
   selectedSignal?: SelectedSignal;
+  selectedStrike?: SelectedStrike;
   runtimeMode: RuntimeMode;
   operationalMode: OperationalMode;
 }
@@ -41,7 +51,8 @@ const initialOperationalMode =
     (window.localStorage.getItem("inversions.runtime.operational") as OperationalMode | null)) ||
   "demo";
 
-const state: SignalStoreState = {
+// useSyncExternalStore requires a new object reference on each update so React detects the change.
+let state: SignalStoreState = {
   selectedInstrument: undefined,
   selectedSignal: undefined,
   runtimeMode: initialRuntimeMode,
@@ -69,26 +80,32 @@ export function useSignalStore() {
   return {
     ...snapshot,
     setSelectedInstrument: (instrument: SelectedInstrument) => {
-      state.selectedInstrument = instrument;
+      state = { ...state, selectedInstrument: instrument };
       emit();
     },
     setSelectedSignal: (signal: SelectedSignal) => {
-      state.selectedSignal = signal;
+      state = { ...state, selectedSignal: signal };
+      emit();
+    },
+    setSelectedStrike: (strike: SelectedStrike | undefined) => {
+      // TEMP-LOG [Punto 3 — signals store] valor que se persiste
+      console.log("[WHEEL-AUDIT][3-signals store] setSelectedStrike →", strike);
+      state = { ...state, selectedStrike: strike };
       emit();
     },
     setRuntimeMode: (mode: RuntimeMode) => {
-      state.runtimeMode = mode;
+      state = { ...state, runtimeMode: mode };
       if (typeof window !== "undefined") {
         window.localStorage.setItem("inversions.runtime.mode", mode);
       }
       emit();
     },
     setOperationalMode: (mode: OperationalMode) => {
-      state.operationalMode = mode;
+      state = { ...state, operationalMode: mode };
       if (typeof window !== "undefined") {
         window.localStorage.setItem("inversions.runtime.operational", mode);
       }
       emit();
-    }
+    },
   };
 }
