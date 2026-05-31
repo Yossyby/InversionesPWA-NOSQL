@@ -1,4 +1,5 @@
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, ChevronLeft, ChevronRight } from "lucide-react";
+import { useState } from "react";
 import type { AnalyzedNewsSource, NewsAnalysisAggregate, NewsConfluenceResponse, NewsVerdict } from "../../services/news/newsApi";
 
 interface AnalysisResultProps {
@@ -41,6 +42,79 @@ function formatDate(value: string): string {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "Fecha no disponible";
   return date.toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" });
+}
+
+interface PaginationControlsProps {
+  currentPage: number;
+  totalPages: number;
+  onPrevious: () => void;
+  onNext: () => void;
+}
+
+function PaginationControls({ currentPage, totalPages, onPrevious, onNext }: PaginationControlsProps) {
+  return (
+    <div style={{
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: "12px",
+      padding: "16px 0",
+      borderTop: "1px solid var(--color-border-subtle)",
+      marginTop: "12px"
+    }}>
+      <button
+        type="button"
+        onClick={onPrevious}
+        disabled={currentPage === 0}
+        style={{
+          background: currentPage === 0 ? "var(--color-surface)" : "var(--color-accent)",
+          color: currentPage === 0 ? "var(--color-text-muted)" : "#fff",
+          border: "none",
+          borderRadius: "var(--radius-sm)",
+          padding: "8px 12px",
+          cursor: currentPage === 0 ? "default" : "pointer",
+          display: "flex",
+          alignItems: "center",
+          gap: "6px",
+          fontSize: "0.875rem",
+          fontWeight: 500,
+          opacity: currentPage === 0 ? 0.5 : 1,
+        }}
+      >
+        <ChevronLeft size={16} /> Anterior
+      </button>
+      
+      <span style={{
+        fontSize: "0.875rem",
+        color: "var(--color-text-muted)",
+        fontWeight: 500
+      }}>
+        Página {currentPage + 1} de {totalPages}
+      </span>
+
+      <button
+        type="button"
+        onClick={onNext}
+        disabled={currentPage === totalPages - 1}
+        style={{
+          background: currentPage === totalPages - 1 ? "var(--color-surface)" : "var(--color-accent)",
+          color: currentPage === totalPages - 1 ? "var(--color-text-muted)" : "#fff",
+          border: "none",
+          borderRadius: "var(--radius-sm)",
+          padding: "8px 12px",
+          cursor: currentPage === totalPages - 1 ? "default" : "pointer",
+          display: "flex",
+          alignItems: "center",
+          gap: "6px",
+          fontSize: "0.875rem",
+          fontWeight: 500,
+          opacity: currentPage === totalPages - 1 ? 0.5 : 1,
+        }}
+      >
+        Siguiente <ChevronRight size={16} />
+      </button>
+    </div>
+  );
 }
 
 function SourceCard({ source }: { source: AnalyzedNewsSource }) {
@@ -97,11 +171,36 @@ function ProviderBreakdown({ articles }: { articles: AnalyzedNewsSource[] }) {
 }
 
 export function AnalysisResult({ confluence, manualAnalysis }: AnalysisResultProps) {
+  const [currentPageConfluence, setCurrentPageConfluence] = useState(0);
+  const [currentPageManual, setCurrentPageManual] = useState(0);
+  
+  const ITEMS_PER_PAGE = 12;
+
   if (!confluence && !manualAnalysis) {
     return <p className="tnmt-empty">Carga noticias reales del ticker o pega fuentes propias para ver resultados.</p>;
   }
 
   const noRealNews = confluence && confluence.articles.length === 0;
+
+  // Ordenar y paginar artículos de confluencia (por confianza, mayor primero)
+  const sortedConfluenceArticles = confluence?.articles 
+    ? [...confluence.articles].sort((a, b) => b.confidence - a.confidence)
+    : [];
+  
+  const confluencePages = Math.ceil(sortedConfluenceArticles.length / ITEMS_PER_PAGE);
+  const confluenceStartIdx = currentPageConfluence * ITEMS_PER_PAGE;
+  const confluenceEndIdx = confluenceStartIdx + ITEMS_PER_PAGE;
+  const confluencePageItems = sortedConfluenceArticles.slice(confluenceStartIdx, confluenceEndIdx);
+
+  // Ordenar y paginar artículos manuales (por confianza, mayor primero)
+  const sortedManualArticles = manualAnalysis?.sources
+    ? [...manualAnalysis.sources].sort((a, b) => b.confidence - a.confidence)
+    : [];
+  
+  const manualPages = Math.ceil(sortedManualArticles.length / ITEMS_PER_PAGE);
+  const manualStartIdx = currentPageManual * ITEMS_PER_PAGE;
+  const manualEndIdx = manualStartIdx + ITEMS_PER_PAGE;
+  const manualPageItems = sortedManualArticles.slice(manualStartIdx, manualEndIdx);
 
   return (
     <div className="tnmt-results">
@@ -129,9 +228,19 @@ export function AnalysisResult({ confluence, manualAnalysis }: AnalysisResultPro
               <p>Agrega llaves de Finnhub, NewsAPI, Polygon o Alpha Vantage en el .env para ampliar la cobertura. No se generaron noticias demo.</p>
             </div>
           ) : (
-            <div className="tnmt-articles-grid">
-              {confluence.articles.map((article) => <SourceCard key={article.id} source={article} />)}
-            </div>
+            <>
+              <div className="tnmt-articles-grid">
+                {confluencePageItems.map((article) => <SourceCard key={article.id} source={article} />)}
+              </div>
+              {confluencePages > 1 && (
+                <PaginationControls
+                  currentPage={currentPageConfluence}
+                  totalPages={confluencePages}
+                  onPrevious={() => setCurrentPageConfluence((p) => Math.max(0, p - 1))}
+                  onNext={() => setCurrentPageConfluence((p) => Math.min(confluencePages - 1, p + 1))}
+                />
+              )}
+            </>
           )}
         </section>
       )}
@@ -152,8 +261,16 @@ export function AnalysisResult({ confluence, manualAnalysis }: AnalysisResultPro
           </div>
           <ProviderBreakdown articles={manualAnalysis.sources} />
           <div className="tnmt-articles-grid">
-            {manualAnalysis.sources.map((source) => <SourceCard key={source.id} source={source} />)}
+            {manualPageItems.map((source) => <SourceCard key={source.id} source={source} />)}
           </div>
+          {manualPages > 1 && (
+            <PaginationControls
+              currentPage={currentPageManual}
+              totalPages={manualPages}
+              onPrevious={() => setCurrentPageManual((p) => Math.max(0, p - 1))}
+              onNext={() => setCurrentPageManual((p) => Math.min(manualPages - 1, p + 1))}
+            />
+          )}
         </section>
       )}
     </div>

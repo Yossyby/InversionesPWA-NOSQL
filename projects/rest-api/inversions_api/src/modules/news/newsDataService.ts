@@ -51,6 +51,8 @@ interface ProviderResult {
   sources: NewsSourceInput[];
   message: string;
   ok: boolean;
+  rawCount?: number;
+  relevantCount?: number;
 }
 
 function normalizeInput(input: string | NewsQueryParams, limit = 8): Required<NewsQueryParams> {
@@ -103,7 +105,9 @@ function providerStatus(result: ProviderResult): NewsProviderStatus {
     enabled: result.enabled,
     ok: result.ok,
     count: result.sources.length,
-    message: result.message
+    message: result.message,
+    rawCount: result.rawCount,
+    relevantCount: result.relevantCount
   };
 }
 
@@ -336,9 +340,16 @@ export async function fetchNewsData(input: string | NewsQueryParams, defaultLimi
     runProvider("alphaVantage", Boolean(getEnv("ALPHA_VANTAGE_API_KEY")), () => fetchAlphaVantage(params.symbol, perProviderLimit, timeoutMs))
   ]);
 
-  const status = results.map(providerStatus);
+  // Calcular noticias crudas vs relevantes por proveedor
+  const resultsWithFiltering = results.map((result) => {
+    const rawCount = result.sources.length;
+    const relevantCount = result.sources.filter((source) => isRelevantToSymbol(source, params.symbol)).length;
+    return { ...result, rawCount, relevantCount };
+  });
+
+  const status = resultsWithFiltering.map(providerStatus);
   const remote = sortByDate(
-    dedupe(results.flatMap((result) => result.sources))
+    dedupe(resultsWithFiltering.flatMap((result) => result.sources))
       .filter((source) => isRelevantToSymbol(source, params.symbol))
   ).slice(0, params.limit);
 

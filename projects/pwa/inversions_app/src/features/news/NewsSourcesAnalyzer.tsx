@@ -14,7 +14,9 @@ interface NewsSourcesAnalyzerProps {
 
 function ProviderPill({ provider }: { provider: NewsProviderStatus }) {
   const stateClass = provider.enabled ? (provider.ok ? "is-online" : "is-warning") : "is-offline";
-  const stateText = provider.enabled ? (provider.ok ? `${provider.count} noticias` : "falló") : "sin key";
+  const rawCount = provider.rawCount ?? provider.count;
+  const relevantCount = provider.relevantCount ?? provider.count;
+  const stateText = provider.enabled ? (provider.ok ? `${rawCount} recibidas / ${relevantCount} relevantes` : "falló") : "sin key";
   const Icon = provider.enabled ? (provider.ok ? CheckCircle2 : AlertTriangle) : KeyRound;
 
   return (
@@ -32,13 +34,15 @@ function ProviderPill({ provider }: { provider: NewsProviderStatus }) {
 function ProviderStatusSummary({ providers }: { providers: NewsProviderStatus[] }) {
   const enabled = providers.filter((provider) => provider.enabled).length;
   const ok = providers.filter((provider) => provider.enabled && provider.ok).length;
-  const totalNews = providers.reduce((sum, provider) => sum + provider.count, 0);
+  const totalRawNews = providers.reduce((sum, provider) => sum + (provider.rawCount ?? provider.count ?? 0), 0);
+  const totalRelevantNews = providers.reduce((sum, provider) => sum + (provider.relevantCount ?? provider.count ?? 0), 0);
 
   return (
     <div className="tnmt-provider-summary">
       <span>APIs configuradas: <strong>{enabled}/{providers.length}</strong></span>
       <span>APIs respondiendo: <strong>{ok}/{providers.length}</strong></span>
-      <span>Noticias recibidas antes de filtrar: <strong>{totalNews}</strong></span>
+      <span>Noticias recibidas (crudas): <strong>{totalRawNews}</strong></span>
+      <span>Noticias relevantes: <strong>{totalRelevantNews}</strong></span>
     </div>
   );
 }
@@ -65,7 +69,7 @@ export function NewsSourcesAnalyzer({ symbol = "SPY", onArticleSelect }: NewsSou
     setLoading(true);
     setError(null);
     try {
-      const result = await getNewsConfluence(activeSymbol, 12, controller.signal);
+      const result = await getNewsConfluence(activeSymbol, 100, controller.signal);
       setConfluence(result);
     } catch (err) {
       setError((err as Error).message);

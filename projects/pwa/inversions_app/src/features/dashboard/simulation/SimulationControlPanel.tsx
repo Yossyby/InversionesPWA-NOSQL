@@ -506,12 +506,10 @@ const TIMEFRAMES: Array<"1m" | "5m" | "15m" | "1h" | "4h" | "1d"> = ["1m", "5m",
 const PRESET_OPTIONS: SelectOption[]    = PRESETS.map((p) => ({ value: p, label: p }));
 const TIMEFRAME_OPTIONS: SelectOption[] = TIMEFRAMES.map((t) => ({ value: t, label: t }));
 const STRATEGY_OPTIONS: SelectOption[]  = [
-  { value: "__debit_spread", label: "Debit Spread", disabled: true },
-  { value: "BULL_CALL_SPREAD", label: "↳ Bull Call" },
-  { value: "BEAR_PUT_SPREAD", label: "↳ Bear Put" },
-  { value: "__credit_spread", label: "Credit Spread", disabled: true },
-  { value: "BULL_PUT_SPREAD", label: "↳ Bull Put" },
-  { value: "BEAR_CALL_SPREAD", label: "↳ Bear Call" },
+  { value: "BULL_CALL_SPREAD", label: "Bull Call" },
+  { value: "BEAR_PUT_SPREAD", label: "Bear Put" },
+  { value: "BULL_PUT_SPREAD", label: "Bull Put" },
+  { value: "BEAR_CALL_SPREAD", label: "Bear Call" },
   ...CANONICAL_ESTRATEGIAS
     .filter((s) => !["BULL_CALL_SPREAD", "BEAR_PUT_SPREAD", "BULL_PUT_SPREAD", "BEAR_CALL_SPREAD"].includes(s))
     .map((s) => ({ value: s, label: s.replace(/_/g, " ") })),

@@ -46,6 +46,8 @@ export interface NewsProviderStatus {
   ok: boolean;
   count: number;
   message: string;
+  rawCount?: number;
+  relevantCount?: number;
 }
 
 export interface NewsAnalysisAggregate {
