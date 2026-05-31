@@ -3,6 +3,8 @@ dist/
 build/
 coverage/
 !**/routes/coverage/
+!**/modules/strategies/coverage/
+
 *.log
 .env
 .env.*

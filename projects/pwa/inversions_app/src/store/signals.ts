@@ -1,5 +1,5 @@
-// FIC: Lightweight global store for dashboard signal selection, runtime modes, and dashboard context.
-// FIC: Store global ligero para seleccion de senales, modos runtime y contexto del dashboard.
+// FIC: Lightweight global store for dashboard signal selection and runtime modes.
+// FIC: Store global ligero para seleccion de senales y modos runtime del dashboard.
 
 import { useSyncExternalStore } from "react";
 
@@ -17,9 +17,23 @@ export interface SelectedSignal {
   metadata?: Record<string, unknown>;
 }
 
+// FIC: Strike selected from OptionChainTable — shared via store so CoverageStrategyModal can read it. (EN)
+// FIC: Strike seleccionado de OptionChainTable — compartido via store para que CoverageStrategyModal lo lea. (ES)
+export interface SelectedStrike {
+  strike: number;
+  type: "call" | "put";
+  premium: number;
+  iv: number;
+  expiration?: string;
+  underlyingPrice?: number;
+  callPremium?: number;
+  putPremium?: number;
+  estimatedRiskFreeRate?: number;
+}
+
 export interface SelectedOptionsStrategy {
-  id: "short-put" | "long-put" | "short-call" | "long-call";
-  name: "Short Put" | "Long Put" | "Short Call" | "Long Call";
+  id: "short-put" | "long-put" | "short-call" | "long-call" | "calendar-spread" | "diagonal-spread";
+  name: "Short Put" | "Long Put" | "Short Call" | "Long Call" | "Calendar Spread" | "Diagonal Spread";
 }
 
 export interface OptionsStrategyParams {
@@ -40,58 +54,14 @@ export interface OptionsStrategyParams {
 type RuntimeMode = "online" | "offline";
 type OperationalMode = "demo" | "real";
 
-/**
- * Snapshot liviano del contexto del dashboard para enriquecer el chat.
- * Lightweight snapshot of dashboard context to enrich the chat.
- */
-export interface DashboardContextSnapshot {
-  fundamentalVerdict?: "VIABLE" | "NEUTRAL" | "NOT_VIABLE";
-  fundamentalScore?: number;
-  fundamentalRecommendation?: string;
-  fundamentalSource?: string;
-  fundamentalSector?: string;
-  fundamentalIndustry?: string;
-  fundamentalMarketCap?: number;
-  fundamentalPE?: number;
-  fundamentalPB?: number;
-  fundamentalPS?: number;
-  fundamentalROE?: number;
-  fundamentalDebtToEquity?: number;
-  fundamentalEPS?: number;
-  fundamentalEPSGrowth?: number;
-  fundamentalDividendYield?: number;
-  fundamentalRevenueGrowth?: number;
-  fundamentalVolatility?: number;
-  fundamentalBeta?: number;
-  fundamentalChange52w?: number;
-  confluenceCallCount?: number;
-  confluencePutCount?: number;
-  confluenceHoldCount?: number;
-  confluenceAvgScore?: number;
-  confluenceDominantTrend?: "ALCISTA" | "BAJISTA" | "LATERAL";
-  topSignals?: Array<{
-    core: string;
-    subCore?: string;
-    tipoSenal: "CALL" | "PUT" | "HOLD";
-    score: number;
-    observacionSummary: string;
-  }>;
-  ohlcTrend?: "ALCISTA" | "BAJISTA" | "LATERAL";
-  ohlcLastClose?: number;
-  ohlcTimeframe?: string;
-}
-
 interface SignalStoreState {
   selectedInstrument?: SelectedInstrument;
   selectedSignal?: SelectedSignal;
+  selectedStrike?: SelectedStrike;
   selectedOptionsStrategy?: SelectedOptionsStrategy;
   optionsStrategyParams?: OptionsStrategyParams;
   runtimeMode: RuntimeMode;
   operationalMode: OperationalMode;
-  /** Contexto enriquecido del dashboard — se llena desde los componentes de confluencia y fundamental */
-  dashboardContext?: DashboardContextSnapshot;
-  /** MD de la señal activa para enviar como contexto al chat / Active signal MD for chat context */
-  signalContextMD?: string;
 }
 
 type Listener = () => void;
@@ -108,15 +78,12 @@ const initialOperationalMode =
     (window.localStorage.getItem("inversions.runtime.operational") as OperationalMode | null)) ||
   "demo";
 
-const state: SignalStoreState = {
+// useSyncExternalStore requires a new object reference on each update so React detects the change.
+let state: SignalStoreState = {
   selectedInstrument: undefined,
   selectedSignal: undefined,
-  selectedOptionsStrategy: undefined,
-  optionsStrategyParams: undefined,
   runtimeMode: initialRuntimeMode,
-  operationalMode: initialOperationalMode,
-  dashboardContext: undefined,
-  signalContextMD: undefined,
+  operationalMode: initialOperationalMode
 };
 
 function emit() {
@@ -140,41 +107,39 @@ export function useSignalStore() {
   return {
     ...snapshot,
     setSelectedInstrument: (instrument: SelectedInstrument) => {
-      state.selectedInstrument = instrument;
+      state = { ...state, selectedInstrument: instrument };
       emit();
     },
     setSelectedSignal: (signal: SelectedSignal) => {
-      state.selectedSignal = signal;
+      state = { ...state, selectedSignal: signal };
+      emit();
+    },
+    setSelectedStrike: (strike: SelectedStrike | undefined) => {
+      // TEMP-LOG [Punto 3 — signals store] valor que se persiste
+      console.log("[WHEEL-AUDIT][3-signals store] setSelectedStrike →", strike);
+      state = { ...state, selectedStrike: strike };
       emit();
     },
     setSelectedOptionsStrategy: (strategy: SelectedOptionsStrategy) => {
-      state.selectedOptionsStrategy = strategy;
+      state = { ...state, selectedOptionsStrategy: strategy };
       emit();
     },
     setOptionsStrategyParams: (params: OptionsStrategyParams) => {
-      state.optionsStrategyParams = params;
+      state = { ...state, optionsStrategyParams: params };
       emit();
     },
     setRuntimeMode: (mode: RuntimeMode) => {
-      state.runtimeMode = mode;
+      state = { ...state, runtimeMode: mode };
       if (typeof window !== "undefined") {
         window.localStorage.setItem("inversions.runtime.mode", mode);
       }
       emit();
     },
     setOperationalMode: (mode: OperationalMode) => {
-      state.operationalMode = mode;
+      state = { ...state, operationalMode: mode };
       if (typeof window !== "undefined") {
         window.localStorage.setItem("inversions.runtime.operational", mode);
       }
-      emit();
-    },
-    setDashboardContext: (ctx: DashboardContextSnapshot | undefined) => {
-      state.dashboardContext = ctx;
-      emit();
-    },
-    setSignalContextMD: (md: string | undefined) => {
-      state.signalContextMD = md;
       emit();
     },
   };

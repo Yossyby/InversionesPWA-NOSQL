@@ -232,8 +232,8 @@ export function createSp500ScreenerRouter(supabaseClient: SupabaseClient): Route
         market_cap: candidate.market_cap,
         volatility: Math.round(candidate.volatility * 100) / 100,
         justification:
-          candidate.justifications.marketCap ||
-          candidate.justifications.roe ||
+          candidate.justifications[0] ||
+          candidate.justifications[1] ||
           `Empresa con score ${candidate.viability_score.toFixed(3)}`,
         // T007c: Enlace a /fundamental/{ticker} para drill-down
         profile_url: `/api/team-03/fundamental/${candidate.ticker}`

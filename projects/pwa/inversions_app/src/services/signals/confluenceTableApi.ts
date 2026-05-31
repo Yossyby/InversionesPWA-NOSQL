@@ -52,6 +52,7 @@ export interface ConfluenceSignalRow {
   disclaimer_id?: string;
   delta_vs_anterior: DeltaPrev;
   observacion: SignalObservation;
+  resumen_analisis?: string;
   optionLeg?: OptionGreeks;
   algorithm_version: string;
   computed_at: string;
@@ -76,6 +77,18 @@ export interface SimulationRequestPayload {
   indicadoresHabilitados: SubCoreIndicador[];
   estrategia: string;
   toleranciaRiesgo: "BAJO" | "MEDIO" | "ALTO";
+  // FIC: Optional historical as-of date (ISO yyyy-mm-dd) — backtest a past day (US8).
+  fechaHistorica?: string;
+  // FIC: When true and >=2 indicators are enabled, only coinciding indicator rows return (US7).
+  soloCoincidencias?: boolean;
+}
+
+// FIC: Aggregated buy/sell/hold counters returned by the simulation (US5).
+export interface SignalMetrics {
+  buy: number;
+  sell: number;
+  hold: number;
+  total: number;
 }
 
 export interface SimulationResponse {
@@ -84,6 +97,7 @@ export interface SimulationResponse {
   inputs_echo: SimulationRequestPayload;
   computed_at: string;
   algorithm_version: string;
+  signalMetrics?: SignalMetrics;
 }
 
 function authHeaders(): HeadersInit {
@@ -128,14 +142,17 @@ export const CANONICAL_ESTRATEGIAS = [
   "IRON_CONDOR",
   "BULL_CALL_SPREAD",
   "BEAR_PUT_SPREAD",
-  "BUY_CALL",
-  "BUY_PUT",
-  "SELL_CALL",
-  "SELL_PUT",
+  "LONG_CALL",
+  "LONG_PUT",
+  "SHORT_CALL",
+  "SHORT_PUT",
   "STRADDLE",
   "STRANGLE",
   "BUTTERFLY",
-  "COVERED_CALL"
+  "COVERED_CALL",
+  "CALENDAR_SPREAD",
+  "DIAGONAL_SPREAD",
+  "WHEEL",
 ] as const;
 
 export const ALL_CORES: CoreId[] = [
@@ -149,126 +166,13 @@ export const ALL_CORES: CoreId[] = [
 
 export const ALL_SUBCORES: SubCoreIndicador[] = ["RSI", "MACD", "EMA", "ADX", "BB"];
 
-// ─── Helpers de serialización para contexto del chat ─────────────────────────
-// Serialization helpers for chat context
-
-/**
- * Builds a Markdown string from a ConfluenceSignalRow for use as chat context.
- * Genera un string MD desde una ConfluenceSignalRow para usar como contexto del chat.
- */
-export function buildSignalContextMD(row: ConfluenceSignalRow, activeStrategy?: string): string {
-  const lines: string[] = [
-    `## Señal de Confluencia: ${row.ticket}`,
-    ``,
-    `| Campo | Valor |`,
-    `|-------|-------|`,
-    `| Core | ${row.core}${row.subCore ? ` / ${row.subCore}` : ""} |`,
-    `| Tipo Señal | **${row.tipoSenal}** |`,
-    `| Tendencia | ${row.tendencia} |`,
-    `| Score | ${row.score.toFixed(3)} |`,
-    `| Peso | ${row.peso.toFixed(3)} |`,
-    `| Invertir | ${row.invertir ? "SI" : "NO"} |`,
-    `| Estado | ${row.estado} |`,
-    `| Timeframe | ${row.timeframe} |`,
-    `| Fecha | ${row.fecha} |`,
-    activeStrategy ? `| Estrategia activa | ${activeStrategy.replace(/_/g, " ")} |` : "",
-    ``,
-    `### Observación`,
-    `**Objetivo:** ${row.observacion.objetivo}`,
-    ``,
-    `**Señal:** ${row.observacion.senal}`,
-    ``,
-    `**Explicación:** ${row.observacion.explicacion}`,
-  ];
-
-  const metricEntries = Object.entries(row.observacion.metricas).filter(([, v]) => v != null);
-  if (metricEntries.length > 0) {
-    lines.push(``, `### Métricas consideradas`);
-    for (const [k, v] of metricEntries) {
-      lines.push(`- **${k}:** ${String(v)}`);
-    }
-  }
-
-  // Razonamiento: por qué estas métricas → esta observación → esta estrategia.
-  // Reasoning: why these metrics → this observation → this strategy.
-  const metricList = metricEntries.map(([k, v]) => `${k}=${String(v)}`).join(", ");
-  lines.push(
-    ``,
-    `### Razonamiento (cómo llegamos a esta conclusión)`,
-    `- El core **${row.core}**${row.subCore ? ` / **${row.subCore}**` : ""} evaluó ${metricEntries.length > 0 ? `las métricas (${metricList})` : "sus indicadores"}.`,
-    `- Esas métricas produjeron un score de **${row.score.toFixed(3)}** (peso ${row.peso.toFixed(3)}) con tendencia **${row.tendencia}**.`,
-    `- Por eso la observación concluye una señal **${row.tipoSenal}**${row.invertir ? " (invertida)" : ""}: ${row.observacion.explicacion}`,
-    activeStrategy
-      ? `- Esto sustenta la estrategia **${activeStrategy.replace(/_/g, " ")}**, coherente con un sesgo ${row.tipoSenal === "CALL" ? "alcista" : row.tipoSenal === "PUT" ? "bajista" : "neutral"}.`
-      : "",
-  );
-
-  // Qué se usó para el cálculo: insumos, algoritmo y trazabilidad.
-  // What was used for the calculation: inputs, algorithm and traceability.
-  lines.push(
-    ``,
-    `### Qué se usó para el cálculo`,
-    `- **Insumos del score:** ${metricEntries.length > 0 ? `las métricas listadas arriba (${metricList})` : "los indicadores del core"}, ponderadas por peso ${row.peso.toFixed(3)}.`,
-    `- **Objetivo del análisis:** ${row.observacion.objetivo}`,
-    `- **Algoritmo / versión:** ${row.algorithm_version}`,
-    `- **Fuente de datos:** ${row.fuente}`,
-    `- **Timeframe evaluado:** ${row.timeframe}`,
-    `- **Calculado:** ${row.computed_at}${row.ia_revisada ? " · revisado por IA" : ""}`,
-    row.source_input_hash ? `- **Hash de insumos:** ${row.source_input_hash}` : "",
-  );
-
-  if (row.evidencia_refs?.length) {
-    lines.push(``, `### Evidencia`);
-    for (const ref of row.evidencia_refs) {
-      lines.push(`- ${ref}`);
-    }
-  }
-
-  if (row.optionLeg) {
-    const g = row.optionLeg;
-    lines.push(
-      ``, `### Greeks`,
-      `- Strike: ${g.strike} | Vencimiento: ${g.vencimiento} | Posición: ${g.posicion}`,
-      `- Delta: ${g.delta} | Gamma: ${g.gamma} | Theta: ${g.theta} | Tolerancia: ${g.tolerancia}`,
-    );
-  }
-
-  return lines.filter((l) => l !== undefined).join("\n");
-}
-
-/**
- * Builds a DashboardContextSnapshot summary from a set of confluence rows.
- * Builds aggregated stats used to enrich options Q&A and AI chat context.
- * Genera un snapshot de contexto del dashboard desde las filas de confluencia.
- */
-export function buildConfluenceContextFromRows(rows: ConfluenceSignalRow[]): {
-  callCount: number;
-  putCount: number;
-  holdCount: number;
-  avgScore: number;
-  dominantTrend: "ALCISTA" | "BAJISTA" | "LATERAL";
-  topSignals: Array<{ core: string; subCore?: string; tipoSenal: "CALL" | "PUT" | "HOLD"; score: number; observacionSummary: string }>;
-} {
-  const active = rows.filter((r) => r.estado === "ACTIVA" || r.estado === "DEGRADADA");
-  const callCount = active.filter((r) => r.tipoSenal === "CALL").length;
-  const putCount  = active.filter((r) => r.tipoSenal === "PUT").length;
-  const holdCount = active.filter((r) => r.tipoSenal === "HOLD").length;
-  const avgScore  = active.length > 0 ? active.reduce((sum, r) => sum + r.score, 0) / active.length : 0;
-
-  const trendCounts = { ALCISTA: 0, BAJISTA: 0, LATERAL: 0 };
-  for (const r of active) trendCounts[r.tendencia] = (trendCounts[r.tendencia] ?? 0) + 1;
-  const dominantTrend = (Object.entries(trendCounts).sort(([, a], [, b]) => b - a)[0][0]) as "ALCISTA" | "BAJISTA" | "LATERAL";
-
-  const topSignals = [...active]
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 5)
-    .map((r) => ({
-      core: r.core,
-      subCore: r.subCore,
-      tipoSenal: r.tipoSenal,
-      score: r.score,
-      observacionSummary: r.observacion.senal,
-    }));
-
-  return { callCount, putCount, holdCount, avgScore, dominantTrend, topSignals };
-}
+export {
+  buildCanonicalOutputString,
+  buildSignalContextMD,
+} from "@inversions/utils";
+export type {
+  CanonicalOutputRow,
+  CanonicalCoreId,
+  CanonicalTipoSenal,
+  CanonicalSignalObservation,
+} from "@inversions/utils";

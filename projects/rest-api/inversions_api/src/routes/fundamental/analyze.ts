@@ -48,6 +48,7 @@ export function createFundamentalAnalyzeRouter(supabaseClient: SupabaseClient): 
       }
 
       const opts: AnalysisOptions = {
+        ticker: sym,
         investmentProfile: String(investmentProfile),
         horizon: String(horizon),
         selectedMetrics: Array.isArray(selectedMetrics) ? selectedMetrics.map(String) : [],

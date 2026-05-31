@@ -7,7 +7,7 @@ import {
   type IChartApi,
   type ISeriesApi
 } from "lightweight-charts";
-import type { FundamentalProjection } from "./FundamentalAnalysisModal";
+import type { FundamentalProjection } from "../../../services/fundamental/fundamentalApi";
 
 interface Props {
   projection: FundamentalProjection;
@@ -66,36 +66,38 @@ export function ProjectionSimulationPanel({ projection }: Props) {
 
   useEffect(() => {
     if (!containerRef.current) return;
-
     const chart = createChart(containerRef.current, {
       layout: {
-        textColor: "#1f2937",
-        background: { type: ColorType.Solid, color: "#ffffff" }
+        textColor: "#d6d8df",
+        background: { type: ColorType.Solid, color: "#000000" },
+        fontFamily: "var(--font-family)",
       },
       width: containerRef.current.clientWidth,
-      height: Math.max(containerRef.current.clientHeight, 340),
+      height: 320,
       grid: {
-        vertLines: { color: "#eef2f7" },
-        horzLines: { color: "#eef2f7" }
+        vertLines: { color: "rgba(255,255,255,0.12)" },
+        horzLines: { color: "rgba(255,255,255,0.12)" }
       },
+      crosshair: { mode: 0 },
       timeScale: {
         timeVisible: true,
-        secondsVisible: false
+        secondsVisible: false,
+        borderColor: "rgba(255,255,255,0.18)",
       },
       rightPriceScale: {
-        borderColor: "#e5e7eb"
+        borderColor: "rgba(255,255,255,0.18)"
       }
     });
 
     chartRef.current = chart;
 
     const candleSeries = chart.addSeries(CandlestickSeries, {
-      upColor: "#4ade80",
-      downColor: "#ef4444",
-      borderUpColor: "#4ade80",
-      borderDownColor: "#ef4444",
-      wickUpColor: "#4ade80",
-      wickDownColor: "#ef4444"
+      upColor: "#00bca4",
+      downColor: "#ff4444",
+      borderUpColor: "#00bca4",
+      borderDownColor: "#ff4444",
+      wickUpColor: "#00bca4",
+      wickDownColor: "#ff4444"
     });
     candleSeries.setData(candles);
     candleSeriesRef.current = candleSeries;
@@ -127,7 +129,7 @@ export function ProjectionSimulationPanel({ projection }: Props) {
       if (!containerRef.current) return;
       chart.applyOptions({
         width: containerRef.current.clientWidth,
-        height: Math.max(containerRef.current.clientHeight, 340)
+        height: 320
       });
       chart.timeScale().fitContent();
     };
@@ -191,17 +193,17 @@ export function ProjectionSimulationPanel({ projection }: Props) {
       </div>
 
       <div style={{
-        border: "1px solid var(--color-border)",
+        border: "1px solid rgba(255,255,255,0.18)",
         borderRadius: "var(--radius-sm)",
         overflow: "hidden",
-        background: "#ffffff"
+        background: "#000000"
       }}>
         <div ref={containerRef} style={{ minHeight: 340, width: "100%" }} />
         <div style={{
           padding: "0.5rem 1rem",
-          borderTop: "1px solid #e5e7eb",
-          background: "#f9fafb",
-          color: "#4b5563",
+          borderTop: "1px solid rgba(255,255,255,0.12)",
+          background: "#050505",
+          color: "#d6d8df",
           display: "flex",
           justifyContent: "space-between",
           gap: "0.75rem",
@@ -219,11 +221,11 @@ export function ProjectionSimulationPanel({ projection }: Props) {
 
       <div style={{ display: "flex", gap: "0.9rem", flexWrap: "wrap", alignItems: "center", fontSize: "0.78rem" }}>
         <span style={{ display: "flex", alignItems: "center", gap: "0.3rem" }}>
-          <span style={{ width: 12, height: 12, background: "#4ade80", display: "inline-block", borderRadius: 2 }} />
+          <span style={{ width: 12, height: 12, background: "#00bca4", display: "inline-block", borderRadius: 2 }} />
           <span style={{ fontWeight: 700 }}>Vela alcista (cuerpo: precio base, mecha alta: escenario alcista)</span>
         </span>
         <span style={{ display: "flex", alignItems: "center", gap: "0.3rem" }}>
-          <span style={{ width: 12, height: 12, background: "#ef4444", display: "inline-block", borderRadius: 2 }} />
+          <span style={{ width: 12, height: 12, background: "#ff4444", display: "inline-block", borderRadius: 2 }} />
           <span style={{ fontWeight: 700 }}>Vela bajista (cuerpo: precio base, mecha baja: escenario bajista)</span>
         </span>
       </div>
