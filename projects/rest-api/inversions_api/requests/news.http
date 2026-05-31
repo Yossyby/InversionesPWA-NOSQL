@@ -1,2 +1,0 @@
-### Sentimiento de noticias
-GET http://localhost:3000/news/sentiment/AAPL
