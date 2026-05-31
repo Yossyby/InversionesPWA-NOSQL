@@ -202,7 +202,6 @@ export function ConfluenceSignalsTable({ symbol, rows: rowsProp, activeStrategy 
                   } else {
                     setStubCore(row.core);
                     setStubResumen(row.resumen_analisis ?? "");
-<<<<<<< HEAD
                     setStubRow(row.core === "A_TECNICO" ? row : null);
                     if (row.core === "A_IA") {
                       setStubRow(row);
@@ -210,10 +209,6 @@ export function ConfluenceSignalsTable({ symbol, rows: rowsProp, activeStrategy 
                       setStubCore(null); // Clear stubCore so the right panel doesn't open
                       setStubResumen("");
                     }
-=======
-                    // FIC: Store full row for both A_TECNICO and A_IA structured panels; null for others. (EN)
-                    setStubRow(row.core === "A_TECNICO" || row.core === "A_IA" ? row : null);
->>>>>>> ia-chat-contexto
                   }
                 };
 
@@ -381,56 +376,14 @@ export function ConfluenceSignalsTable({ symbol, rows: rowsProp, activeStrategy 
               );
             })() : null}
 
-<<<<<<< HEAD
             {/* FIC: Non-A_TECNICO/A_IA: ObservationsTab when stubRow available (upstream), else plain stubResumen. (EN) */}
-=======
-            {/* FIC: Non-A_TECNICO & Non-A_IA: ObservationsTab when stubRow available (upstream), else plain stubResumen. (EN) */}
-            {/* FIC: No-A_TECNICO y No-A_IA: ObservationsTab si stubRow disponible (upstream), si no texto plano. (ES) */}
->>>>>>> ia-chat-contexto
             {stubCore !== "A_TECNICO" && stubCore !== "A_IA" && stubRow && (
               <div style={{ flex: 1, overflowY: "auto", marginBottom: "1.25rem" }}>
                 <ObservationsTab row={stubRow} activeStrategy={activeStrategy} />
               </div>
             )}
 
-<<<<<<< HEAD
-=======
-            {/* FIC: Custom scrollable complete text for A_IA core without truncations */}
-            {stubCore === "A_IA" && stubRow && (
-              <>
-                <div style={{
-                  borderTop: "1px solid var(--color-border-subtle)",
-                  paddingTop: "0.75rem",
-                  marginBottom: "0.5rem",
-                  flexShrink: 0
-                }}>
-                  <span style={{
-                    fontSize: "0.68rem",
-                    fontWeight: 700,
-                    color: "var(--color-accent)",
-                    textTransform: "uppercase",
-                    letterSpacing: "0.07em"
-                  }}>
-                    Auditoría Cuantitativa — Explicación Completa de la IA
-                  </span>
-                </div>
-                <div style={{
-                  flex: 1,
-                  maxHeight: "450px",
-                  overflowY: "auto",
-                  background: "var(--color-surface-raised)",
-                  borderRadius: "var(--radius-sm)",
-                  padding: "1rem",
-                  marginBottom: "1.25rem",
-                  whiteSpace: "pre-wrap",
-                  lineHeight: 1.6
-                }}>
-                  <MarkdownContent content={stubRow.observacion?.explicacion || stubResumen} />
-                </div>
-              </>
-            )}
 
->>>>>>> ia-chat-contexto
             {stubCore !== "A_TECNICO" && stubCore !== "A_IA" && !stubRow && stubResumen && (
               <>
                 <div style={{
