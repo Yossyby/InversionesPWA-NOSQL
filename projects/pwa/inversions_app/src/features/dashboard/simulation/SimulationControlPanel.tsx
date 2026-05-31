@@ -508,6 +508,19 @@ const STRATEGY_OPTIONS: SelectOption[] = CANONICAL_ESTRATEGIAS.map((strategy) =>
 function isoToday(): string       { return new Date().toISOString().slice(0, 10); }
 function isoPlusDays(n: number)   { return new Date(Date.now() + n * 86_400_000).toISOString().slice(0, 10); }
 
+// FIC: Initial core state — A_INDICADORES starts DISABLED by default at system start; the user
+// FIC: enables it manually. Other cores start enabled. This is purely the initial state: it is
+// FIC: never toggled off when the simulation runs (avoids turning it off by mistake). (EN)
+// FIC: Estado inicial de cores — A_INDICADORES arranca DESHABILITADO al iniciar el sistema; el
+// FIC: usuario lo activa a mano. Los demas cores arrancan activos. Es solo el estado inicial:
+// FIC: nunca se apaga al ejecutar la simulacion (evita apagarlo por error). (ES)
+const defaultCoresOn = (): Record<CoreId, boolean> =>
+  ALL_CORES.reduce((acc, c) => ({ ...acc, [c]: c !== "A_INDICADORES" }), {} as Record<CoreId, boolean>);
+
+// FIC: Individual technical indicators start DISABLED; the user opts in (US-2). (EN)
+const defaultIndicadoresOn = (): Record<SubCoreIndicador, boolean> =>
+  ALL_SUBCORES.reduce((acc, s) => ({ ...acc, [s]: false }), {} as Record<SubCoreIndicador, boolean>);
+
 // ─── Section label style (shared) ─────────────────────────────────────────────
 const sectionLabelStyle: React.CSSProperties = {
   fontSize: "var(--font-size-xs)",
@@ -552,14 +565,10 @@ export function SimulationControlPanel({
   const [temporalidad, setTemporalidad]   = useState<"1m" | "5m" | "15m" | "1h" | "4h" | "1d">("1h");
   const [estrategia, setEstrategia]       = useState("IRON_CONDOR");
   const [tolerancia, setTolerancia]       = useState<"BAJO" | "MEDIO" | "ALTO">("MEDIO");
-  const [coresOn, setCoresOn]             = useState<Record<CoreId, boolean>>(
-    ALL_CORES.reduce((acc, c) => ({ ...acc, [c]: true }), {} as Record<CoreId, boolean>)
-  );
+  // FIC: A_INDICADORES core starts DISABLED at system start (initial state only). (EN)
+  const [coresOn, setCoresOn]             = useState<Record<CoreId, boolean>>(defaultCoresOn);
   // FIC: US-2 — technical indicators start DISABLED; the user opts in explicitly. (EN)
-  // FIC: US-2 — los indicadores tecnicos arrancan DESHABILITADOS; el usuario los activa. (ES)
-  const [indicadoresOn, setIndicadoresOn] = useState<Record<SubCoreIndicador, boolean>>(
-    ALL_SUBCORES.reduce((acc, s) => ({ ...acc, [s]: false }), {} as Record<SubCoreIndicador, boolean>)
-  );
+  const [indicadoresOn, setIndicadoresOn] = useState<Record<SubCoreIndicador, boolean>>(defaultIndicadoresOn);
   // FIC: US-8 — optional historical as-of date; empty means "use latest data". (EN)
   // FIC: US-8 — fecha historica opcional; vacio significa "usar datos mas recientes". (ES)
   const [fechaHistorica, setFechaHistorica] = useState<string>("");
@@ -658,8 +667,8 @@ export function SimulationControlPanel({
     setEstrategia("IRON_CONDOR");
     onStrategyChange?.("IRON_CONDOR");
     setTolerancia("MEDIO");
-    setCoresOn(ALL_CORES.reduce((acc, c) => ({ ...acc, [c]: true }), {} as Record<CoreId, boolean>));
-    setIndicadoresOn(ALL_SUBCORES.reduce((acc, s) => ({ ...acc, [s]: false }), {} as Record<SubCoreIndicador, boolean>));
+    setCoresOn(defaultCoresOn());
+    setIndicadoresOn(defaultIndicadoresOn());
     setFechaHistorica("");
     setError(null);
     onClear?.();

@@ -244,10 +244,13 @@ export async function runSimulation(
   const computedAt = deps.now ?? new Date();
 
   const enabledCores = new Set<CoreId>(request.coresHabilitados);
-  const enabledSubs: SubCoreIndicador[] =
-    request.indicadoresHabilitados.length > 0
-      ? request.indicadoresHabilitados
-      : (ALL_SUBCORES_INDICADOR as readonly SubCoreIndicador[]).slice();
+  // FIC: No "all indicators" fallback. If A_INDICADORES is enabled but the user selected NO
+  // FIC: individual indicator, the core emits ZERO rows — the confluence table shows nothing for
+  // FIC: indicators. Other enabled cores still emit their own rows (multicore rule). (EN)
+  // FIC: Sin fallback a "todos los indicadores". Si A_INDICADORES esta activo pero el usuario no
+  // FIC: selecciono ningun indicador individual, el core no emite filas — la tabla no muestra nada
+  // FIC: de indicadores. Los demas cores activos siguen emitiendo sus filas (regla multicore). (ES)
+  const enabledSubs: SubCoreIndicador[] = request.indicadoresHabilitados ?? [];
 
   const verdict = computeConfluence(candles, {
     symbol: request.ticket,
@@ -255,7 +258,7 @@ export async function runSimulation(
   });
 
   let table: ConfluenceSignalRow[] = [];
-  if (enabledCores.has("A_INDICADORES")) {
+  if (enabledCores.has("A_INDICADORES") && enabledSubs.length > 0) {
     table = buildIndicatorsTable({
       ticket: request.ticket,
       timeframe: request.temporalidad,
@@ -328,6 +331,16 @@ export async function runSimulation(
     table = [...table, ...institutionalRows, ...tecnicoRows, ...stubs];
   } else {
     table = [...table, ...institutionalRows, ...tecnicoRows];
+  }
+
+  // FIC: US8 bugfix — when running on historical (as-of) data, the rows MUST display the REAL date
+  // FIC: of the data point, not today's date. Stamp every row's `fecha` with the last candle's day.
+  // FIC: `computed_at` keeps the real computation timestamp; only `fecha` (the data date) changes.
+  // FIC: US8 fix — al correr sobre datos historicos, las filas DEBEN mostrar la fecha real del dato,
+  // FIC: no la de hoy. Sella el `fecha` de cada fila con el dia de la ultima vela usada. (ES)
+  if (endTimeMs && candles.length > 0) {
+    const dataDate = new Date(candles[candles.length - 1].time * 1000).toISOString().slice(0, 10);
+    table = table.map((r) => ({ ...r, fecha: dataDate }));
   }
 
   const disabled = (ALL_CORE_IDS as readonly CoreId[]).filter((c) => !enabledCores.has(c));

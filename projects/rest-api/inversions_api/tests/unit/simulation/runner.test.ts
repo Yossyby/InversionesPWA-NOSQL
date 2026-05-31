@@ -111,6 +111,44 @@ describe("runSimulation", () => {
     expect(sell).toBe(result.table.filter((r) => r.tipoSenal === "PUT").length);
   });
 
+  it("A_INDICADORES enabled with NO individual indicators emits zero indicator rows", async () => {
+    const result = await runSimulation(
+      buildRequest({ coresHabilitados: ["A_INDICADORES"], indicadoresHabilitados: [] })
+    );
+    expect(result.table.filter((r) => r.core === "A_INDICADORES").length).toBe(0);
+  });
+
+  it("multicore: with no indicators selected, other enabled cores still emit rows", async () => {
+    const result = await runSimulation(
+      buildRequest({ coresHabilitados: ["A_INDICADORES", "A_IA"], indicadoresHabilitados: [] })
+    );
+    expect(result.table.filter((r) => r.core === "A_INDICADORES").length).toBe(0);
+    expect(result.table.some((r) => r.core === "A_IA")).toBe(true);
+  });
+
+  it("stamps rows with the historical data date, not today (US8 fecha bugfix)", async () => {
+    const asOf = "2025-09-15";
+    const asOfSec = Math.floor(Date.parse(`${asOf}T00:00:00Z`) / 1000);
+    const fakeCandles = Array.from({ length: 60 }).map((_, i) => ({
+      time: asOfSec - (59 - i) * 86_400,
+      open: 100, high: 101, low: 99, close: 100 + (i % 3), volume: 1000,
+    }));
+    const result = await runSimulation(
+      buildRequest({
+        coresHabilitados: ["A_INDICADORES"],
+        indicadoresHabilitados: ["RSI", "MACD"],
+        fechaHistorica: asOf,
+      }),
+      { fetchCandles: () => fakeCandles }
+    );
+    expect(result.table.length).toBeGreaterThan(0);
+    const today = new Date().toISOString().slice(0, 10);
+    for (const row of result.table) {
+      expect(row.fecha).toBe(asOf);
+      expect(row.fecha).not.toBe(today);
+    }
+  });
+
   it("with a single indicator returns all its rows (no coincidence filter) (US7)", async () => {
     const result = await runSimulation(
       buildRequest({ coresHabilitados: ["A_INDICADORES"], indicadoresHabilitados: ["RSI"] })
