@@ -1,4 +1,3 @@
-import { GoogleGenAI } from "@google/genai";
 import type {
   AgentRole,
   IAgentMessage,
@@ -78,36 +77,46 @@ async function backoffRetry<T>(action: () => Promise<T>, attempts = 3, initialDe
 }
 
 export class GeminiAgentService {
-  private readonly ai: GoogleGenAI | null;
+  // Usamos 'any' para la instancia y así evitamos importar el tipo estático de genai que causa conflictos
+  private aiInstance: any | null = null;
   private readonly primaryModel: string;
   private readonly fallbackModel: string;
   private readonly timeoutMs: number;
+  private readonly apiKey: string | undefined;
+  private readonly enabled: boolean;
 
   constructor() {
-    const apiKey = process.env.GEMINI_API_KEY;
-    const enabled = process.env.GEMINI_ENABLED !== "false";
+    this.apiKey = process.env.GEMINI_API_KEY;
+    this.enabled = process.env.GEMINI_ENABLED !== "false";
 
     this.primaryModel = process.env.GEMINI_PRIMARY_MODEL ?? "gemini-2.5-flash";
     this.fallbackModel = process.env.GEMINI_FALLBACK_MODEL ?? "gemini-2.5-flash";
     this.timeoutMs = parseInt(process.env.GEMINI_TIMEOUT_MS ?? "12000", 10);
-
-    if (enabled && apiKey && apiKey.length > 0) {
-      this.ai = new GoogleGenAI({ apiKey });
-    } else {
-      this.ai = null;
-    }
   }
 
   public isEnabled(): boolean {
-    return this.ai !== null;
+    return this.enabled && (this.apiKey !== undefined && this.apiKey.length > 0);
+  }
+
+  // Carga perezosa (Lazy Load) de la librería con importación dinámica
+  private async getAiInstance(): Promise<any> {
+    if (!this.isEnabled()) return null;
+    
+    if (!this.aiInstance) {
+      // Esta es la línea mágica que evita el error TS1479
+      const { GoogleGenAI } = await import("@google/genai");
+      this.aiInstance = new GoogleGenAI({ apiKey: this.apiKey as string });
+    }
+    return this.aiInstance;
   }
 
   private async callModel(prompt: string, model: string): Promise<string> {
-    if (!this.ai) {
+    const ai = await this.getAiInstance();
+    if (!ai) {
       throw new Error("Gemini is not configured. Set GEMINI_API_KEY to enable AI agent execution.");
     }
 
-    const response = await this.ai.models.generateContent({
+    const response = await ai.models.generateContent({
       model,
       contents: [{ role: "user", parts: [{ text: prompt }] }],
     });
@@ -144,7 +153,7 @@ export class GeminiAgentService {
   }
 
   public async generateSimpleResponse(prompt: string, modelType: 'primary' | 'fallback' = 'primary'): Promise<{ model: string; text: string }> {
-    if (!this.ai) {
+    if (!this.isEnabled()) {
       throw new Error("Gemini is not configured. Set GEMINI_API_KEY to enable AI agent execution.");
     }
 
