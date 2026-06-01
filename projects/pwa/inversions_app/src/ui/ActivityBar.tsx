@@ -3,7 +3,7 @@
 
 import React from "react";
 import { List } from "lucide-react";
-import { useAppShellStore } from "../../store/appShell";
+import { useAppShellStore } from "../store/appShell";
 
 const iconButtonStyle = (isActive: boolean): React.CSSProperties => ({
   width: "40px",

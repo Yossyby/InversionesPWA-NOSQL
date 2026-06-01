@@ -1,13 +1,13 @@
 // FIC: Option chain table — 3-column layout (calls | strike | puts), auto-updates on ticker change. (EN)
 import React, { useCallback, useEffect, useState } from "react";
-import { useSignalStore } from "../../store/signals";
-import { SkeletonCard } from "../../components/ui/SkeletonCard";
+import { useSignalStore } from "../store/signals";
+import { SkeletonCard } from "../components/ui/SkeletonCard";
 import {
   fetchOptionChain,
   fetchExpirations,
   type OptionChainResponse,
   type OptionChainRow,
-} from "../../services/options/optionChainApi";
+} from "./optionChainApi";
 
 export interface OptionChainTableProps {
   symbol: string;

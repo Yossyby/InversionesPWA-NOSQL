@@ -1,7 +1,7 @@
 // FIC: Option chain service — calls /api/options/chain and /api/options/expirations. (EN)
 // FIC: Servicio de cadena de opciones — llama a /api/options/chain y /api/options/expirations. (ES)
 
-import { getAuthHeaders } from "../signals/signalApi";
+import { getAuthHeaders } from "../services/signals/signalApi";
 
 export interface OptionChainRow {
   strike: number;

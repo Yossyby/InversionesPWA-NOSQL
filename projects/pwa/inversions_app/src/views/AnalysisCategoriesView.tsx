@@ -2,7 +2,7 @@
 // FIC: AnalysisCategoriesView — selector de chips de categoría de análisis, filtra secciones del dashboard principal.
 
 import React from "react";
-import { useAppShellStore, type AnalysisCategory } from "../../../store/appShell";
+import { useAppShellStore, type AnalysisCategory } from "../store/appShell";
 
 interface ChipConfig {
   id: AnalysisCategory;
