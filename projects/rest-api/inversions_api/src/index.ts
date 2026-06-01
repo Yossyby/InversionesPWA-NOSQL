@@ -1,5 +1,6 @@
 import "dotenv/config";
 import express from "express";
+import path from "path";
 import { initializeEnvironment } from "./config/environment";
 import { printValidationResult, validateEnvironment } from "./config/envValidator";
 import { createAuditHistoryRouter } from "./routes/audit/history";
@@ -43,10 +44,18 @@ import { coverageSimulateRouter } from "./routes/coverage/simulate";
 import { optionChainRouter } from "./routes/options/chain";
 import { optionExpirationsRouter } from "./routes/options/expirations";
 import { supabaseClient } from "./database/supabase/client";
-import { createRelevantNewsRouter } from "./routes/news/relevant";
-import { newsRouter } from "./routes/news";
 import { calendarSpreadRouter } from "./routes/strategies/term/calendarSpread";
 import { diagonalSpreadRouter } from "./routes/strategies/term/diagonalSpread";
+
+// ── TEAM-08: Complex Strategy Routes ──
+import { alpacaExecutionRouter } from "./routes/strategies/complex/alpacaExecutionRouter";
+import { fromChainRouter } from "./routes/strategies/complex/fromChain";
+import { optionsChainRouter } from "./routes/strategies/complex/optionsChain";
+import { ironCondorRouter } from "./routes/strategies/complex/ironCondor";
+import { ironButterflyRouter } from "./routes/strategies/complex/ironButterfly";
+import { butterflySpreadRouter } from "./routes/strategies/complex/butterflySpread";
+import { condorRouter } from "./routes/strategies/complex/condor";
+import { complexComparatorRouter } from "./routes/strategies/complex/complexComparator";
 import { createFundamentalAnalyzeRouter } from "./routes/fundamental/analyze";
 import { createCompanyProfileRouter } from "./routes/fundamental/companyProfile";
 import { createOptionsRouter } from "./routes/strategies/optionsRouter";
@@ -107,8 +116,6 @@ app.use("/api/coverage", coverageCompareRouter);
 app.use("/api/coverage", coverageSimulateRouter);
 app.use("/api/options", indicatorsRateLimit, optionChainRouter);
 app.use("/api/options", indicatorsRateLimit, optionExpirationsRouter);
-app.use("/api/news", newsRouter);
-app.use("/api/news", createRelevantNewsRouter(supabaseClient));
 
 // ── Team-03 routes ──────────────────────────────────────────────────
 app.use("/api/team-03/fundamental", createFundamentalAnalyzeRouter(supabaseClient));
@@ -120,6 +127,16 @@ app.use("/api/team-03/options", createOptionsAnalysisQARouter(supabaseClient));
 app.use("/api/v1/strategies/term", calendarSpreadRouter);
 app.use("/api/v1/strategies/term", diagonalSpreadRouter);
 
+// ── TEAM-08: Complex Strategy Routes ──
+app.use("/api/strategies/complex", optionsChainRouter);
+app.use("/api/strategies/complex", fromChainRouter);
+app.use("/api/strategies/complex", alpacaExecutionRouter);
+app.use("/api/strategies/complex", ironCondorRouter);
+app.use("/api/strategies/complex", ironButterflyRouter);
+app.use("/api/strategies/complex", butterflySpreadRouter);
+app.use("/api/strategies/complex", condorRouter);
+app.use("/api/strategies/complex", complexComparatorRouter);
+
 app.get("/health", (_req, res) => {
   res.status(200).json({ status: "ok" });
 });
@@ -127,6 +144,16 @@ app.get("/health", (_req, res) => {
 app.get("/api/health", (_req, res) => {
   res.status(200).json({ status: "ok" });
 });
+
+if (process.env.NODE_ENV === "production") {
+  // En producción, servimos el frontend pre-construido
+  const clientDistPath = path.join(__dirname, "../pwa-dist");
+  app.use(express.static(clientDistPath));
+
+  app.get("*", (req, res) => {
+    res.sendFile(path.join(clientDistPath, "index.html"));
+  });
+}
 
 // Debug: list all registered routes (temporary helper)
 app.get("/_debug/routes", (_req, res) => {

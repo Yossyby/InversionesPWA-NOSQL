@@ -138,6 +138,9 @@ export type MetricKey =
   | "RESISTENCIAS"
   | "ATR"
   | "CANDLES_ANALYZED"
+  | "PREPROMPT"
+  | "VALOR_ENTRADA"
+  // FIC: A_NOTICIAS engine metrics (TEAM-06).
   | "CONFIANZA"
   | "CREDIBILIDAD"
   | "PROVEEDOR";

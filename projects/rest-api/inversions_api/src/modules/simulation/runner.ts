@@ -21,10 +21,10 @@ import {
   type TipoSenal
 } from "../indicators/types";
 import { buildInstitutionalRows } from "../institutional/institutionalRowBuilder";
-// FIC: A_TECNICO real implementation — replaces stub when core is enabled. (EN)
 import { buildTechnicalTable } from "../indicators/technicalTable";
 import type { InstitutionalRouteContext } from "../../routes/institutional/bootstrap";
 import type { InstitutionalAnalysisContract } from "../institutional/institutionalContract";
+import { runAiCore } from "./aiCoreRunner";
 
 export interface SimulationRunResult {
   verdict: ConfluenceVerdict;
@@ -46,10 +46,11 @@ export interface SimulationValidationError {
 
 export const KNOWN_ESTRATEGIAS = new Set<string>([
   "IRON_CONDOR",
+  "IRON_BUTTERFLY",
+  "BUTTERFLY_SPREAD",
+  "CONDOR",
   "BULL_CALL_SPREAD",
   "BEAR_PUT_SPREAD",
-  "BULL_PUT_SPREAD",
-  "BEAR_CALL_SPREAD",
   "LONG_CALL",
   "LONG_PUT",
   "SHORT_CALL",
@@ -326,13 +327,26 @@ export async function runSimulation(
       })
     : [];
 
-  // FIC: Stub remaining cores — skip A_INSTITUCIONAL/A_TECNICO if real rows were built. (EN)
-  // FIC: Stub de cores restantes — omite A_INSTITUCIONAL/A_TECNICO si hay filas reales. (ES)
+  // FIC: Execute AI Core if enabled
+  let aiRow: ConfluenceSignalRow | null = null;
+  if (enabledCores.has("A_IA")) {
+    aiRow = await runAiCore({
+      ticket: request.ticket,
+      timeframe: request.temporalidad,
+      sourceInputHash: verdict.source_input_hash,
+      computedAt: computedAt,
+      previousRows: deps.previousRows,
+      precalculatedRows: [...table, ...institutionalRows, ...tecnicoRows, ...noticiasRows],
+    });
+  }
+
+  // FIC: Stub remaining cores — skip A_INSTITUCIONAL/A_TECNICO/A_NOTICIAS/A_IA if real rows were built. (EN)
   const stubCores = (ALL_CORE_IDS as readonly CoreId[])
     .filter((c) => {
       if (c === "A_INDICADORES") return false;
       if (c === "A_INSTITUCIONAL" && institutionalRows.length > 0) return false;
       if (c === "A_TECNICO" && tecnicoRows.length > 0) return false;
+      if (c === "A_IA" && aiRow !== null) return false;
       if (c === "A_NOTICIAS" && noticiasRows.length > 0) return false;
       return enabledCores.has(c);
     });
@@ -359,6 +373,10 @@ export async function runSimulation(
   if (endTimeMs && candles.length > 0) {
     const dataDate = new Date(candles[candles.length - 1].time * 1000).toISOString().slice(0, 10);
     table = table.map((r) => ({ ...r, fecha: dataDate }));
+  }
+
+  if (aiRow) {
+    table.push(aiRow);
   }
 
   const disabled = (ALL_CORE_IDS as readonly CoreId[]).filter((c) => !enabledCores.has(c));
