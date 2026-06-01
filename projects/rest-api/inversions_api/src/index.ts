@@ -49,6 +49,8 @@ import { createFundamentalAnalyzeRouter } from "./routes/fundamental/analyze";
 import { createCompanyProfileRouter } from "./routes/fundamental/companyProfile";
 import { createOptionsRouter } from "./routes/strategies/optionsRouter";
 import { createOptionsAnalysisQARouter } from "./routes/strategies/optionsAnalysisQARouter";
+import { newsSentimentRouter } from "./routes/news/sentiment";
+import newsUrlAnalysisRouter from "./routes/news/urlAnalysis";
 
 const envValidation = validateEnvironment();
 if (!envValidation.isValid) {
@@ -115,6 +117,10 @@ app.use("/api/team-03/options", createOptionsAnalysisQARouter(supabaseClient));
 // ── Team-09 routes: Calendar & Diagonal Spreads ──────────────────────
 app.use("/api/v1/strategies/term", calendarSpreadRouter);
 app.use("/api/v1/strategies/term", diagonalSpreadRouter);
+
+// ── Team-05 routes: News & Sentiment Analysis ────────────────────────
+app.use("/api/news", newsSentimentRouter);
+app.use("/api/news", newsUrlAnalysisRouter);
 
 app.get("/health", (_req, res) => {
   res.status(200).json({ status: "ok" });

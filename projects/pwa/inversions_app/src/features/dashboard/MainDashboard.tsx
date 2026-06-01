@@ -16,6 +16,7 @@ import type { CoverageModalParams } from "./simulation/CoverageParamsModal";
 import type { OptionStrategyAnalysis } from "./simulation/OptionStrategyParamsModal";
 import type { WheelModalParams } from "./simulation/WheelParamsModal";
 import { TechnicalAnalysisExtendedSection } from "./TechnicalAnalysisExtendedSection";
+import { NewsSourcesAnalyzer } from "../news";
 import { AppShell } from "../../layouts/AppShell";
 import { ActivityBar } from "../../components/ui/ActivityBar";
 import { LeftPanel } from "../sidebar/LeftPanel";
@@ -555,10 +556,7 @@ export function MainDashboard() {
         autoRunKey={fundamentalAutoRunKey}
         onAnalysisComplete={setFundamentalAnalysis}
       />
-      <PlaceholderSection
-        title="Noticias y Sentimiento"
-        description="Sentimiento del mercado, noticias relevantes y análisis de redes sociales."
-      />
+      <NewsSourcesAnalyzer />
     </div>
   );
 

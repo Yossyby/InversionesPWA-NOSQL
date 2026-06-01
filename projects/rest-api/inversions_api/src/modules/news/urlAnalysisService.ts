@@ -6,7 +6,7 @@ import {
   type NewsSentimentAnalyzer
 } from "./sentimentService";
 import { resolveVerdict } from "./investmentAdvisor";
-import { NEWS_DISCLAIMER, type NewsArticle, type SourceAnalysisResult } from "./types";
+import { NEWS_DISCLAIMER, type NewsArticle, type SentimentResult, type SourceAnalysisResult } from "./types";
 
 export interface URLContent {
   url: string;
@@ -63,6 +63,97 @@ export class URLAnalysisService {
     } finally {
       clearTimeout(timer);
     }
+  }
+
+  // FIC: Validate that a domain is reachable. Returns true if HTTP response is ok.
+  // FIC: Valida que un dominio sea accesible. Devuelve true si la respuesta HTTP es ok.
+  async validateURL(domain: string): Promise<boolean> {
+    const fullUrl = domain.startsWith("http") ? domain : `https://${domain}`;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 8000);
+    try {
+      const res = await this.fetchImpl(fullUrl, {
+        headers: { "User-Agent": "Mozilla/5.0" },
+        signal: controller.signal
+      });
+      return res.ok;
+    } catch {
+      return false;
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  // FIC: Analyze multiple source domains for a company and return a consolidated verdict.
+  // FIC: Analiza multiples dominios de fuentes para una empresa y devuelve un veredicto consolidado.
+  async analyzeSourcesForCompany(
+    company: string,
+    domains: string[]
+  ): Promise<{
+    url: string;
+    company: string;
+    verdict: string;
+    score: number;
+    confidence: number;
+    reasoning: string;
+    keyPoints: string[];
+    timestamp: string;
+  }> {
+    const results: SourceAnalysisResult[] = [];
+
+    for (const domain of domains) {
+      const fullUrl = domain.startsWith("http") ? domain : `https://${domain}`;
+      try {
+        const content = await this.fetchURLContent(fullUrl, company);
+        const analysis = await this.analyzeSourceImpact(content, company);
+        results.push(analysis);
+      } catch {
+        // FIC: Fuente inaccesible — se omite del consolidado sin lanzar error.
+      }
+    }
+
+    const timestamp = new Date().toISOString();
+
+    if (results.length === 0) {
+      return {
+        url: domains.join(", "),
+        company: company.toUpperCase(),
+        verdict: "HOLD",
+        score: 0,
+        confidence: 0,
+        reasoning: `No fue posible obtener contenido de ninguna fuente para ${company}. Verifica que los dominios sean accesibles.`,
+        keyPoints: [],
+        timestamp
+      };
+    }
+
+    const avgScore = Number(
+      (results.reduce((s, r) => s + r.score, 0) / results.length).toFixed(3)
+    );
+    const avgConfidence = Number(
+      (results.reduce((s, r) => s + r.confidence, 0) / results.length).toFixed(3)
+    );
+    const keyPoints = [...new Set(results.flatMap(r => r.keyPoints))].slice(0, 5);
+    const sourcesLabel = results.map(r => hostnameOf(r.url)).join(", ");
+
+    const aggregated: SentimentResult = {
+      score: avgScore,
+      label: avgScore > 0.3 ? "BULLISH" : avgScore < -0.3 ? "BEARISH" : "NEUTRAL",
+      confidence: avgConfidence,
+      reasoning: "",
+      keyFactors: keyPoints
+    };
+
+    return {
+      url: domains.join(", "),
+      company: company.toUpperCase(),
+      verdict: resolveVerdict(aggregated),
+      score: avgScore,
+      confidence: avgConfidence,
+      reasoning: `Análisis consolidado de ${results.length} fuente(s) (${sourcesLabel}) para ${company}.`,
+      keyPoints,
+      timestamp
+    };
   }
 
   // FIC: Analyze fetched content as a single-article sentiment in the company's context.
