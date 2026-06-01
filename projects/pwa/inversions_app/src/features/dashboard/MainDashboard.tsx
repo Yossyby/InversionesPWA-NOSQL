@@ -21,6 +21,9 @@ import { ActivityBar } from "../../components/ui/ActivityBar";
 import { LeftPanel } from "../sidebar/LeftPanel";
 import { Badge } from "../../components/ui/Badge";
 import type { ConfluenceSignalRow, SimulationResponse, CoreId } from "../../services/signals/confluenceTableApi";
+import { buildComplexStrategyRows, STRATEGY_CORE } from "../../services/strategies/buildStrategyRows";
+import { ComplexStrategyModal } from "./simulation/ComplexStrategyModal";
+import type { FromChainResponse } from "../../services/strategies/strategyApi";
 import { useSignalStore } from "../../store/signals";
 import { useAppShellStore } from "../../store/appShell";
 import { useInstitutionalStore, setInstitutionalLoading, setInstitutionalResult, setInstitutionalError } from "../../store/institutional";
@@ -35,13 +38,16 @@ export function MainDashboard() {
   const [periodRange, setPeriodRange] = useState<{ startDate: Date; endDate: Date } | null>(null);
   const [simulationRows, setSimulationRows] = useState<ConfluenceSignalRow[] | undefined>(undefined);
   const [simulationVerdict, setSimulationVerdict] = useState<{ verdict?: unknown; score?: number; degraded?: boolean } | null>(null);
-  const [activeSimulationStrategy, setActiveSimulationStrategy] = useState("IRON_CONDOR");
+  const [activeSimulationStrategy, setActiveSimulationStrategy] = useState("");
   const [coverageRequest, setCoverageRequest] = useState<{ params: CoverageModalParams; kind: string } | null>(null);
   const [optionStrategyAnalysis, setOptionStrategyAnalysis] = useState<OptionStrategyAnalysis | null>(null);
   const [fundamentalAnalysis, setFundamentalAnalysis] = useState<FundamentalAnalysisResponse | null>(null);
   const [fundamentalAutoRunKey, setFundamentalAutoRunKey] = useState(0);
   const [wheelSummary, setWheelSummary] = useState<WheelModalParams | null>(null);
   const [termResult, setTermResult] = useState<any | null>(null);
+  const [complexResult, setComplexResult] = useState<FromChainResponse | null>(null);
+  const [strategyModalRow, setStrategyModalRow] = useState<ConfluenceSignalRow | null>(null);
+  const [strategyError, setStrategyError] = useState<string | null>(null);
   const [institutionalCoreWasActive, setInstitutionalCoreWasActive] = useState(false);
   const [copilotOpen, setCopilotOpen] = useState(false);
   const [selectedStrikeData, setSelectedStrikeData] = useState<{
@@ -69,13 +75,20 @@ export function MainDashboard() {
       setFundamentalAnalysis(null);
       setWheelSummary(null);
       setTermResult(null);
+      setComplexResult(null);
       setSelectedStrikeData(null);
       setSelectedStrike(undefined);
     }
   }, [selectedSymbol, setSelectedStrike]);
 
   const handleSimulationResult = useCallback((result: SimulationResponse) => {
-    setSimulationRows(result.table);
+    setSimulationRows((prev) => {
+      // Preserve any A_ESTRATEGIA rows (from complex strategy execution) that were
+      // added by handleComplexResult, since onResult fires after onComplexResult.
+      const existing = prev ?? [];
+      const strategyRows = existing.filter((r) => r.core === STRATEGY_CORE);
+      return [...result.table, ...strategyRows];
+    });
     setSimulationVerdict(result.verdict);
   }, []);
 
@@ -95,6 +108,31 @@ export function MainDashboard() {
 
   const handleTermResult = useCallback((data: any) => {
     setTermResult(data);
+  }, []);
+
+  const handleComplexResult = useCallback((result: FromChainResponse, strategy: string, timeframe?: string) => {
+    setComplexResult(result);
+    setActiveSimulationStrategy(strategy);
+    setStrategyError(null);
+    try {
+      const payload = buildComplexStrategyRows(result, strategy, selectedSymbol, timeframe);
+      setSimulationRows((prev) => {
+        const existing = prev ?? [];
+        const filtered = existing.filter((r) => r.core !== STRATEGY_CORE);
+        return [...filtered, ...payload.rows];
+      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Error desconocido al procesar la estrategia";
+      setStrategyError(msg);
+    }
+  }, [selectedSymbol]);
+
+  const handleStrategyRowClick = useCallback((row: ConfluenceSignalRow) => {
+    setStrategyModalRow(row);
+  }, []);
+
+  const handleCloseStrategyModal = useCallback(() => {
+    setStrategyModalRow(null);
   }, []);
 
   // FIC: Writes selected strike to global store so CoverageStrategyModal can read it from anywhere. (EN)
@@ -280,6 +318,14 @@ export function MainDashboard() {
         </div>
       )}
 
+      {/* ── Strategy detail modal (triggered by clicking A_ESTRATEGIA rows in the confluence table) */}
+      <ComplexStrategyModal
+        isOpen={strategyModalRow !== null}
+        onClose={handleCloseStrategyModal}
+        row={strategyModalRow}
+        result={complexResult}
+      />
+
       {/* ── Simulation control — cores + indicators + execute */}
       <SimulationControlPanel
         ticket={selectedSymbol}
@@ -290,7 +336,16 @@ export function MainDashboard() {
         onOptionStrategyCalculated={handleOptionStrategyCalculated}
         onWheelParamsConfirmed={handleWheelConfirmed}
         onTermResult={handleTermResult}
+        onComplexResult={handleComplexResult}
       />
+
+      {/* ── Strategy error (from buildComplexStrategyRows validation) */}
+      {strategyError && (
+        <div className="card" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.5rem", background: "rgba(248,81,73,0.08)", border: "1px solid var(--color-sell)", padding: "var(--space-md)" }}>
+          <strong style={{ color: "var(--color-sell)" }}>Error de estrategia:</strong>
+          <span style={{ color: "var(--color-sell)", fontSize: "0.85rem" }}>{strategyError}</span>
+        </div>
+      )}
 
       {/* ── Simulation verdict */}
       {simulationVerdict && (
@@ -319,6 +374,7 @@ export function MainDashboard() {
           rows={simulationRows}
           activeStrategy={activeSimulationStrategy}
           fundamentalAnalysis={fundamentalAnalysis}
+          onStrategyRowClick={handleStrategyRowClick}
         />
       )}
 
@@ -476,6 +532,7 @@ export function MainDashboard() {
           optionStrategyAnalysis={optionStrategyAnalysis}
           wheelSummary={wheelSummary}
           termResult={termResult}
+          complexResult={complexResult}
         />
       )}
 

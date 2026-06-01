@@ -325,14 +325,14 @@ export function EstrategiasPanel({ defaultTicker, onStrategyResult }: Props) {
               onClick={() => { setStep("form"); setError(null); }}
               style={{ fontSize: "0.7rem", padding: "0.25rem 0.5rem" }}
             >
-              ⚙️ Configurar
+              Configurar
             </button>
             <button
               className={`btn-ghost ${step === "results" ? "active" : ""}`}
               onClick={() => setStep("results")}
               style={{ fontSize: "0.7rem", padding: "0.25rem 0.5rem" }}
             >
-              📊 Resultados
+              Resultados
             </button>
           </div>
         )}
@@ -411,11 +411,11 @@ export function EstrategiasPanel({ defaultTicker, onStrategyResult }: Props) {
               <h4 style={{ margin: "0 0 0.6rem", fontSize: "0.8rem" }}>Patas ({legs})</h4>
               {loadingStrikes ? (
                 <div style={{ fontSize: "0.75rem", color: "var(--color-text-muted)", fontStyle: "italic", padding: "0.5rem 0" }}>
-                  ⏳ Cargando strikes desde options chain...
+                  Cargando strikes desde options chain...
                 </div>
               ) : !strikesValidas && form.ticker.length === 0 ? (
                 <div style={{ fontSize: "0.75rem", color: "var(--color-text-muted)", fontStyle: "italic", padding: "0.5rem 0" }}>
-                  ✏️ Ingresa un ticker arriba y sal del campo para cargar strikes automáticamente
+                  Ingresa un ticker arriba y sal del campo para cargar strikes automáticamente
                 </div>
               ) : (
                 <div style={{ display: "grid", gap: "0.4rem" }}>
@@ -475,7 +475,7 @@ export function EstrategiasPanel({ defaultTicker, onStrategyResult }: Props) {
                   disabled={loadingBalance}
                   style={{ fontSize: "0.75rem", padding: "0.35rem 0.6rem", marginTop: "0.15rem" }}
                 >
-                  {loadingBalance ? "⏳ Cargando..." : "📡 Cargar saldo real de Alpaca"}
+                  {loadingBalance ? "Cargando..." : "Cargar saldo real de Alpaca"}
                 </button>
               </div>
             </div>
@@ -496,15 +496,15 @@ export function EstrategiasPanel({ defaultTicker, onStrategyResult }: Props) {
               }}
             >
               {loading
-                ? "⏳ Ejecutando con datos reales..."
+                ? "Ejecutando con datos reales..."
                 : !strikesValidas
-                  ? "✏️ Ingresa ticker para cargar strikes"
-                  : "🚀 Ejecutar Estrategia con Datos Reales"}
+                  ? "Ingresa ticker para cargar strikes"
+                  : "Ejecutar Estrategia con Datos Reales"}
             </button>
 
             {error && (
               <div style={{ background: "rgba(248,81,73,0.08)", border: "1px solid var(--color-sell)", borderRadius: "var(--radius-sm)", padding: "0.6rem 0.8rem", color: "var(--color-sell)", fontSize: "0.8rem" }}>
-                ⚠️ {error}
+                {error}
               </div>
             )}
           </div>
@@ -575,7 +575,7 @@ export function EstrategiasPanel({ defaultTicker, onStrategyResult }: Props) {
                 <div style={{ display: "flex", justifyContent: "space-between" }}>
                   <span style={{ color: "var(--color-text-muted)", fontSize: "0.8rem" }}>Aceptable</span>
                   <span className={`badge ${(result.risk as any)?.riesgo_aceptable ? "badge-buy" : "badge-sell"}`}>
-                    {(result.risk as any)?.riesgo_aceptable ? "✅ Sí" : "❌ No"}
+                    {(result.risk as any)?.riesgo_aceptable ? "Sí" : "No"}
                   </span>
                 </div>
                 {(() => {
@@ -589,7 +589,7 @@ export function EstrategiasPanel({ defaultTicker, onStrategyResult }: Props) {
                         <div>
                           <div style={{ fontSize: "0.7rem", color: "var(--color-text-muted)", fontWeight: 600, marginBottom: "0.2rem" }}>Advertencias:</div>
                           {advertencias.map((e: any, i: number) => (
-                            <div key={i} style={{ fontSize: "0.75rem", color: "var(--color-hold)", padding: "0.15rem 0" }}>⚠️ {e.mensaje}</div>
+                            <div key={i} style={{ fontSize: "0.75rem", color: "var(--color-hold)", padding: "0.15rem 0" }}>{e.mensaje}</div>
                           ))}
                         </div>
                       )}
@@ -597,7 +597,7 @@ export function EstrategiasPanel({ defaultTicker, onStrategyResult }: Props) {
                         <div>
                           <div style={{ fontSize: "0.7rem", color: "var(--color-text-muted)", fontWeight: 600, marginBottom: "0.2rem" }}>Bloqueos:</div>
                           {bloqueos.map((e: any, i: number) => (
-                            <div key={i} style={{ fontSize: "0.75rem", color: "var(--color-sell)", padding: "0.15rem 0" }}>🚫 {e.mensaje}</div>
+                            <div key={i} style={{ fontSize: "0.75rem", color: "var(--color-sell)", padding: "0.15rem 0" }}>{e.mensaje}</div>
                           ))}
                         </div>
                       )}

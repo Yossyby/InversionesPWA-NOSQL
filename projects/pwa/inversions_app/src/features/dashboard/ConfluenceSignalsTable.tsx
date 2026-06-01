@@ -11,6 +11,7 @@ import {
 } from "../../services/signals/confluenceTableApi";
 import type { InstitutionalAnalysisResponse } from "../../services/institutional/institutionalApi";
 import type { FundamentalAnalysisResponse } from "../../services/fundamental/fundamentalApi";
+import { STRATEGY_CORE } from "../../services/strategies/buildStrategyRows";
 import { OptionGreeksRow } from "./OptionGreeksRow";
 import { InstitutionalDetailModal } from "../institutional/InstitutionalDetailModal";
 import { MarkdownContent } from "../../components/ui/MarkdownContent";
@@ -133,6 +134,7 @@ interface Props {
   rows?: ConfluenceSignalRow[];
   activeStrategy?: string;
   fundamentalAnalysis?: FundamentalAnalysisResponse | null;
+  onStrategyRowClick?: (row: ConfluenceSignalRow) => void;
 }
 
 function colorForTipo(tipo: string): string {
@@ -188,7 +190,7 @@ function buildFundamentalRow(data: FundamentalAnalysisResponse, timeframe: strin
   };
 }
 
-export function ConfluenceSignalsTable({ symbol, rows: rowsProp, activeStrategy, fundamentalAnalysis }: Props) {
+export function ConfluenceSignalsTable({ symbol, rows: rowsProp, activeStrategy, fundamentalAnalysis, onStrategyRowClick }: Props) {
   const [rows, setRows] = useState<ConfluenceSignalRow[]>(rowsProp ?? []);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -296,6 +298,10 @@ export function ConfluenceSignalsTable({ symbol, rows: rowsProp, activeStrategy,
                 const rowKey = `${row.core}-${row.subCore ?? "agg"}-${idx}`;
                 const instData = institutionalResults[row.ticket?.toUpperCase() ?? ""];
                 const onClick = () => {
+                  if (row.core === STRATEGY_CORE && onStrategyRowClick) {
+                    onStrategyRowClick(row);
+                    return;
+                  }
                   if (row.core === "A_INSTITUCIONAL") {
                     if (instData) {
                       setModalTicker(row.ticket ?? null);

@@ -189,6 +189,34 @@ export class AlpacaOptionsService {
   }
 
   /**
+   * FIC: Fetch available expiration dates for a ticker within a relative range (from today).
+   * FIC: Obtiene fechas de expiración disponibles para un ticker en un rango relativo (desde hoy).
+   */
+  async getExpirations(ticker: string, rangeMonths: number): Promise<string[]> {
+    const today = new Date();
+    const maxDate = new Date(today);
+    maxDate.setMonth(maxDate.getMonth() + rangeMonths);
+
+    const todayStr = today.toISOString().slice(0, 10);
+    const maxDateStr = maxDate.toISOString().slice(0, 10);
+
+    const contracts = await this.fetchContractsInRange(ticker, todayStr, maxDateStr);
+
+    const dates = Array.from(
+      new Set(contracts.map((c) => c.expiration_date).filter(Boolean) as string[])
+    ).sort();
+
+    if (dates.length === 0) {
+      throw new Error(
+        `No se encontraron expiraciones para ${ticker} en los proximos ${rangeMonths} meses. ` +
+        `No expirations found for ${ticker} in the next ${rangeMonths} months.`
+      );
+    }
+
+    return dates;
+  }
+
+  /**
    * FIC: Fetch the full options chain for a given ticker and expiration.
    * Returns contracts grouped by type (calls/puts) with current bid/ask prices.
    *
@@ -270,6 +298,24 @@ export class AlpacaOptionsService {
       const expDate = expiration.substring(0, 10);
       url += `&expiration_date_gte=${expDate}&expiration_date_lte=${expDate}`;
     }
+
+    const response = await this.get(url);
+    const data = (await response.json()) as AlpacaContractsResponse;
+    return data.option_contracts ?? [];
+  }
+
+  /**
+   * FIC: Fetch option contracts within a date range from Alpaca /v2/options/contracts.
+   * FIC: Obtiene contratos de opciones en un rango de fechas desde Alpaca /v2/options/contracts.
+   */
+  private async fetchContractsInRange(
+    ticker: string,
+    startDate: string,
+    endDate: string
+  ): Promise<AlpacaOptionContract[]> {
+    const url = `${this.paperApiBase}/v2/options/contracts?` +
+      `underlying_symbols=${ticker}&status=active&limit=250` +
+      `&expiration_date_gte=${startDate}&expiration_date_lte=${endDate}`;
 
     const response = await this.get(url);
     const data = (await response.json()) as AlpacaContractsResponse;

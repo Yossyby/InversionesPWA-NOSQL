@@ -23,6 +23,9 @@ import {
   type OptionStrategyAnalysis,
 } from "./OptionStrategyParamsModal";
 import { WheelParamsModal, type WheelModalParams } from "./WheelParamsModal";
+import { ComplexStrategyParamsModal, type ComplexFormState } from "./ComplexStrategyParamsModal";
+import { executeStrategy } from "../../../services/strategies/strategyApi";
+import type { FromChainResponse } from "../../../services/strategies/strategyApi";
 
 // ─── Panel CSS ─────────────────────────────────────────────────────────────────
 // Uses only real Revolut design-system tokens from tokens.css.
@@ -308,7 +311,13 @@ function CustomSelect({
         aria-haspopup="listbox"
         aria-expanded={open}
       >
-        <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+        <span style={{
+          flex: 1,
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
+          ...(value === "" ? { textTransform: "uppercase", opacity: 0.45 } : {}),
+        }}>
           {selectedLabel}
         </span>
         <ChevronDown
@@ -331,6 +340,7 @@ function CustomSelect({
               aria-selected={value === opt.value}
               className={`sim-dd-item${value === opt.value ? " active" : ""}`}
               onPointerDown={() => { onChange(opt.value); setOpen(false); }}
+              style={opt.value === "" ? { textTransform: "uppercase", opacity: 0.45 } : undefined}
             >
               {opt.label}
             </div>
@@ -450,10 +460,12 @@ function ChipButton({
 // ─── Constants ─────────────────────────────────────────────────────────────────
 const TERM_STRATEGIES = new Set(["CALENDAR_SPREAD", "DIAGONAL_SPREAD"]);
 const CORE_OPTION_STRATEGIES = new Set<string>(["LONG_CALL", "LONG_PUT", "SHORT_CALL", "SHORT_PUT"]);
+const COMPLEX_STRATEGIES = new Set(["IRON_CONDOR", "IRON_BUTTERFLY", "BUTTERFLY_SPREAD", "CONDOR"]);
 function isTermStrategy(e: string)     { return TERM_STRATEGIES.has(e); }
 function isCoverageStrategy(e: string) { return e === "COVERED_CALL"; }
 function isCoreOptionStrategy(e: string): e is CoreOptionStrategy { return CORE_OPTION_STRATEGIES.has(e); }
 function isWheelStrategy(e: string)    { return e === "WHEEL"; }
+function isComplexStrategy(e: string)  { return COMPLEX_STRATEGIES.has(e); }
 
 const DEFAULT_TERM_PARAMS: TermStrategyParams = {
   optionStyle: "CALL",
@@ -500,10 +512,14 @@ const TIMEFRAMES: Array<"1m" | "5m" | "15m" | "1h" | "4h" | "1d"> = ["1m", "5m",
 const PRESET_OPTIONS: SelectOption[]    = PRESETS.map((p) => ({ value: p, label: p }));
 const TIMEFRAME_OPTIONS: SelectOption[] = TIMEFRAMES.map((t) => ({ value: t, label: t }));
 const OPTION_STRATEGY_LABELS = new Map(OPTION_STRATEGY_OPTIONS.map((strategy) => [strategy.value, strategy.label]));
-const STRATEGY_OPTIONS: SelectOption[] = CANONICAL_ESTRATEGIAS.map((strategy) => ({
-  value: strategy,
-  label: OPTION_STRATEGY_LABELS.get(strategy as CoreOptionStrategy) ?? strategy.replace(/_/g, " "),
-}));
+const EMPTY_STRATEGY_OPTION: SelectOption = { value: "", label: "Seleccionar estrategia…" };
+const STRATEGY_OPTIONS: SelectOption[] = [
+  EMPTY_STRATEGY_OPTION,
+  ...CANONICAL_ESTRATEGIAS.map((strategy) => ({
+    value: strategy,
+    label: OPTION_STRATEGY_LABELS.get(strategy as CoreOptionStrategy) ?? strategy.replace(/_/g, " "),
+  })),
+];
 
 function isoToday(): string       { return new Date().toISOString().slice(0, 10); }
 function isoPlusDays(n: number)   { return new Date(Date.now() + n * 86_400_000).toISOString().slice(0, 10); }
@@ -530,6 +546,7 @@ interface Props {
   onOptionStrategyCalculated?: (analysis: OptionStrategyAnalysis) => void;
   onWheelParamsConfirmed?: (params: WheelModalParams) => void;
   onTermResult?: (data: any) => void;
+  onComplexResult?: (result: FromChainResponse, strategy: string, timeframe?: string) => void;
 }
 
 // ─── Main component ────────────────────────────────────────────────────────────
@@ -542,12 +559,13 @@ export function SimulationControlPanel({
   onOptionStrategyCalculated,
   onWheelParamsConfirmed,
   onTermResult,
+  onComplexResult,
 }: Props) {
   const [preset, setPreset]               = useState<Preset>("3M");
   const [estrategiaFrom, setEstrategiaFrom] = useState(isoToday());
   const [estrategiaTo, setEstrategiaTo]   = useState(isoPlusDays(30));
   const [temporalidad, setTemporalidad]   = useState<"1m" | "5m" | "15m" | "1h" | "4h" | "1d">("1h");
-  const [estrategia, setEstrategia]       = useState("IRON_CONDOR");
+  const [estrategia, setEstrategia]       = useState("");
   const [tolerancia, setTolerancia]       = useState<"BAJO" | "MEDIO" | "ALTO">("MEDIO");
   const [coresOn, setCoresOn]             = useState<Record<CoreId, boolean>>(
     ALL_CORES.reduce((acc, c) => ({ ...acc, [c]: true }), {} as Record<CoreId, boolean>)
@@ -564,6 +582,8 @@ export function SimulationControlPanel({
   const [optionParamsModalOpen, setOptionParamsModalOpen] = useState(false);
   const [optionParamsStrategy, setOptionParamsStrategy] = useState<CoreOptionStrategy>("LONG_CALL");
   const [wheelModalOpen, setWheelModalOpen] = useState(false);
+  const [complexModalOpen, setComplexModalOpen] = useState(false);
+  const [complexParams, setComplexParams] = useState<ComplexFormState | null>(null);
   const [wheelParams, setWheelParams] = useState<WheelModalParams>({
     ...DEFAULT_WHEEL_PARAMS,
     csp: { ...DEFAULT_WHEEL_PARAMS.csp, ticker: ticket },
@@ -634,6 +654,8 @@ export function SimulationControlPanel({
       setCoverageModalOpen(true);
     } else if (isWheelStrategy(e)) {
       setWheelModalOpen(true);
+    } else if (isComplexStrategy(e)) {
+      setComplexModalOpen(true);
     }
   };
 
@@ -716,6 +738,32 @@ export function SimulationControlPanel({
 
         const termData = await termRes.json();
         onTermResult?.(termData);
+        onResult(simResult);
+        return;
+      }
+
+      if (isComplexStrategy(estrategia) && complexParams) {
+        const complexPayload = {
+          strategy_type: complexParams.strategy_type,
+          ticker: ticket,
+          expiracion: complexParams.expiracion || undefined,
+          strikes: complexParams.strikes,
+          contratos: complexParams.contratos,
+          tipo_ala: complexParams.tipo_ala,
+          tolerancia_riesgo: tolerancia.toLowerCase(),
+          estilo_opcion: complexParams.estilo_opcion,
+          portfolio: {
+            valor_portafolio_usd: complexParams.portfolio_valor,
+            poder_compra_usd: complexParams.portfolio_poder,
+            margen_actual_usd: complexParams.portfolio_margen,
+            posiciones_actuales: complexParams.portfolio_posiciones,
+          },
+        };
+        const [simResult, complexRes] = await Promise.all([
+          runSimulation(simPayload),
+          executeStrategy(complexPayload),
+        ]);
+        onComplexResult?.(complexRes, estrategia, temporalidad);
         onResult(simResult);
         return;
       }
@@ -958,6 +1006,17 @@ export function SimulationControlPanel({
         onChange={setWheelParams}
         onClose={() => setWheelModalOpen(false)}
         onConfirm={(params) => onWheelParamsConfirmed?.(params)}
+      />
+      <ComplexStrategyParamsModal
+        open={complexModalOpen}
+        strategy={estrategia}
+        ticker={ticket}
+        riskTolerance={tolerancia.toLowerCase()}
+        onClose={() => setComplexModalOpen(false)}
+        onConfirm={(params, strat) => {
+          setComplexParams(params);
+          setComplexModalOpen(false);
+        }}
       />
     </>
   );

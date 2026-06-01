@@ -152,6 +152,39 @@ export interface ExecuteOptionsStrategyRequest {
   idempotencyKey?: string;
 }
 
+// ── Expirations API ───────────────────────────────────────
+
+export interface ExpirationsResponse {
+  ticker: string;
+  rangeMonths: number;
+  expiraciones: string[];
+}
+
+/**
+ * FIC: Fetch available expiration dates for a ticker within a relative range.
+ * FIC: Obtiene fechas de expiración disponibles para un ticker en un rango relativo.
+ */
+export async function fetchExpirations(ticker: string, rangeMonths: number): Promise<ExpirationsResponse> {
+  const params = new URLSearchParams({ ticker, rangeMonths: String(rangeMonths) });
+
+  const response = await fetch(`${API_BASE}/expirations?${params.toString()}`, {
+    headers: { ...getAuthHeaders() },
+  });
+
+  if (!response.ok) {
+    const text = await response.text().catch(() => "Unknown error");
+    if (response.status === 404) {
+      throw new Error(`No hay expiraciones disponibles para ${ticker} en los proximos ${rangeMonths} meses.`);
+    }
+    if (response.status === 502) {
+      throw new Error("Error de autenticacion con Alpaca. Verifica las API keys.");
+    }
+    throw new Error(`Error ${response.status} al obtener expiraciones: ${text}`);
+  }
+
+  return (await response.json()) as ExpirationsResponse;
+}
+
 const API_BASE = "/api/strategies/complex";
 
 export function getAuthHeaders(): Record<string, string> {

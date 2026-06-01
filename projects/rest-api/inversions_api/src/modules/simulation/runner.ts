@@ -40,6 +40,9 @@ export interface SimulationValidationError {
 
 export const KNOWN_ESTRATEGIAS = new Set<string>([
   "IRON_CONDOR",
+  "IRON_BUTTERFLY",
+  "BUTTERFLY_SPREAD",
+  "CONDOR",
   "BULL_CALL_SPREAD",
   "BEAR_PUT_SPREAD",
   "LONG_CALL",

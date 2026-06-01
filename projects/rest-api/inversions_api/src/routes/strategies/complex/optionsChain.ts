@@ -10,6 +10,85 @@ export const optionsChainRouter = Router();
 const optionsService = createAlpacaOptionsService();
 
 /**
+ * FIC: GET /api/strategies/complex/expirations
+ * Returns available expiration dates for a ticker within a relative range (from today).
+ *
+ * Query params:
+ *   - ticker (required): Underlying symbol (e.g., SPY, AAPL, MSFT)
+ *   - rangeMonths (required): Number of months forward from today (1, 2, 6, 12)
+ *
+ * FIC: GET /api/strategies/complex/expirations
+ * Devuelve fechas de expiración disponibles para un ticker en un rango relativo (desde hoy).
+ *
+ * Parámetros de query:
+ *   - ticker (requerido): Símbolo subyacente (ej: SPY, AAPL, MSFT)
+ *   - rangeMonths (requerido): Número de meses hacia adelante desde hoy (1, 2, 6, 12)
+ */
+optionsChainRouter.get("/expirations", authContextMiddleware, async (req, res) => {
+  try {
+    const ticker = (req.query.ticker as string)?.trim().toUpperCase();
+    const rangeMonthsStr = req.query.rangeMonths as string | undefined;
+
+    if (!ticker) {
+      res.status(400).json({
+        error: "Ticker es requerido. Ticker is required.",
+        ejemplo: "/api/strategies/complex/expirations?ticker=SPY&rangeMonths=6",
+      });
+      return;
+    }
+
+    if (!rangeMonthsStr) {
+      res.status(400).json({
+        error: "rangeMonths es requerido. rangeMonths is required.",
+        ejemplo: "/api/strategies/complex/expirations?ticker=SPY&rangeMonths=6",
+      });
+      return;
+    }
+
+    const rangeMonths = parseInt(rangeMonthsStr, 10);
+    if (isNaN(rangeMonths) || rangeMonths < 1) {
+      res.status(400).json({
+        error: "rangeMonths debe ser un numero positivo. rangeMonths must be a positive number.",
+      });
+      return;
+    }
+
+    const expiraciones = await optionsService.getExpirations(ticker, rangeMonths);
+
+    res.status(200).json({
+      ticker,
+      rangeMonths,
+      expiraciones,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+
+    if (message.includes("No se encontraron expiraciones")) {
+      res.status(404).json({
+        error: message,
+        ticker: (req.query.ticker as string)?.trim().toUpperCase(),
+        rangeMonths: parseInt(req.query.rangeMonths as string) || 0,
+        expiraciones: [],
+      });
+      return;
+    }
+
+    if (message.includes("401") || message.includes("403")) {
+      res.status(502).json({
+        error: "Error de autenticacion con Alpaca. Verificar API keys. Alpaca auth error. Check API keys.",
+        detalle: message,
+      });
+      return;
+    }
+
+    res.status(500).json({
+      error: "Error al obtener expiraciones. Error fetching expirations.",
+      detalle: message,
+    });
+  }
+});
+
+/**
  * FIC: GET /api/strategies/complex/options-chain
  * Fetches real options chain data from Alpaca for a given ticker and optional expiration.
  * Returns strikes, bid/ask prices, and Greeks (if available).
