@@ -1,5 +1,5 @@
 import { fetchNewsData } from "./newsDataService";
-import type { NewsImpactResponse, NewsQueryParams, NewsVerdict } from "./types";
+import type { NewsImpactResponse, NewsVerdict } from "./types";
 
 function verdictToNumber(verdict: NewsVerdict): number {
   if (verdict === "BUY") return 1;
@@ -7,13 +7,11 @@ function verdictToNumber(verdict: NewsVerdict): number {
   return 0;
 }
 
-export async function evaluateNewsImpact(input: string | NewsQueryParams): Promise<NewsImpactResponse> {
-  const data = await fetchNewsData(input);
+export async function evaluateNewsImpact(input: string | { symbol: string; limit?: number; from?: string; to?: string; includeFallback?: boolean }): Promise<NewsImpactResponse> {
+  const data = await fetchNewsData(input as any);
   const articles = data.articles;
   const total = articles.length || 1;
-  const weighted = articles.reduce((sum, article) => {
-    return sum + verdictToNumber(article.verdict) * article.confidence * article.credibilityScore;
-  }, 0) / total;
+  const weighted = articles.reduce((sum, article) => sum + verdictToNumber(article.verdict) * article.confidence * article.credibilityScore, 0) / total;
   const score = Number(Math.max(-1, Math.min(1, weighted)).toFixed(3));
   const sentimentScore = articles.reduce((sum, article) => sum + article.sentimentScore, 0) / total;
   const verdict: NewsVerdict = articles.length === 0 ? "HOLD" : score > 0.16 ? "BUY" : score < -0.16 ? "SELL" : "HOLD";
@@ -32,11 +30,6 @@ export async function evaluateNewsImpact(input: string | NewsQueryParams): Promi
     articles,
     providerStatus: data.providerStatus,
     realDataOnly: true,
-    evidence: articles.map((article) => ({
-      sourceId: article.id,
-      verdict: article.verdict,
-      confidence: article.confidence,
-      rationale: article.rationale
-    }))
+    evidence: articles.map((article) => ({ sourceId: article.id, verdict: article.verdict, confidence: article.confidence, rationale: article.rationale }))
   };
 }

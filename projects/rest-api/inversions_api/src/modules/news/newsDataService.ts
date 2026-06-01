@@ -85,7 +85,7 @@ function stripHtml(value: string): string {
 }
 
 function extractTag(item: string, tag: string): string | undefined {
-  const match = item.match(new RegExp(`<${tag}[^>]*>([\\s\\S]*?)<\\/${tag}>`, "i"));
+  const match = item.match(new RegExp(`<${tag}[^>]*>([\\s\\S]*?)<\/${tag}>`, "i"));
   return match?.[1] ? stripHtml(match[1]) : undefined;
 }
 
@@ -218,12 +218,7 @@ async function fetchFinnhub(symbol: string, limit: number, timeoutMs: number): P
   const token = getEnv("FINNHUB_API_KEY");
   if (!token) return [];
 
-  const params = new URLSearchParams({
-    symbol,
-    from: toIsoDate(30),
-    to: toIsoDate(0),
-    token
-  });
+  const params = new URLSearchParams({ symbol, from: toIsoDate(30), to: toIsoDate(0), token });
   const payload = await fetchJson<Array<{ id?: number; headline?: string; summary?: string; url?: string; datetime?: number; source?: string }>>(
     `https://finnhub.io/api/v1/company-news?${params.toString()}`,
     timeoutMs
@@ -245,14 +240,8 @@ async function fetchNewsApi(symbol: string, limit: number, timeoutMs: number): P
   if (!apiKey) return [];
 
   const company = COMPANY_NAMES[symbol] ?? symbol;
-  const params = new URLSearchParams({
-    q: `(${symbol} OR "${company}") AND (stock OR shares OR earnings OR market)`,
-    language: "en",
-    sortBy: "publishedAt",
-    pageSize: String(Math.min(100, limit)),
-    apiKey
-  });
-  const payload = await fetchJson<{ articles?: Array<{ title?: string; description?: string; content?: string; url?: string; publishedAt?: string; source?: { name?: string } }> }>(
+  const params = new URLSearchParams({ q: `(${symbol} OR "${company}") AND (stock OR shares OR earnings OR market)`, language: "en", sortBy: "publishedAt", pageSize: String(Math.min(100, limit)), apiKey });
+  const payload = await fetchJson<{ articles?: Array<{ title?: string; description?: string; content?: string; url?: string; publishedAt?: string }> }>(
     `https://newsapi.org/v2/everything?${params.toString()}`,
     timeoutMs
   );
@@ -272,13 +261,8 @@ async function fetchAlphaVantage(symbol: string, limit: number, timeoutMs: numbe
   const apiKey = getEnv("ALPHA_VANTAGE_API_KEY");
   if (!apiKey) return [];
 
-  const params = new URLSearchParams({
-    function: "NEWS_SENTIMENT",
-    tickers: symbol,
-    limit: String(Math.min(50, limit)),
-    apikey: apiKey
-  });
-  const payload = await fetchJson<{ feed?: Array<{ title?: string; summary?: string; url?: string; time_published?: string; source?: string }> }>(
+  const params = new URLSearchParams({ function: "NEWS_SENTIMENT", tickers: symbol, limit: String(Math.min(50, limit)), apikey: apiKey });
+  const payload = await fetchJson<{ feed?: Array<{ title?: string; summary?: string; url?: string; time_published?: string }> }>(
     `https://www.alphavantage.co/query?${params.toString()}`,
     timeoutMs
   );
@@ -300,14 +284,8 @@ async function fetchPolygon(symbol: string, limit: number, timeoutMs: number): P
   const apiKey = getEnv("POLYGON_API_KEY");
   if (!apiKey) return [];
 
-  const params = new URLSearchParams({
-    ticker: symbol,
-    limit: String(Math.min(100, limit)),
-    order: "desc",
-    sort: "published_utc",
-    apiKey
-  });
-  const payload = await fetchJson<{ results?: Array<{ id?: string; title?: string; description?: string; article_url?: string; published_utc?: string; publisher?: { name?: string } }> }>(
+  const params = new URLSearchParams({ ticker: symbol, limit: String(Math.min(100, limit)), order: "desc", sort: "published_utc", apiKey });
+  const payload = await fetchJson<{ results?: Array<{ id?: string; title?: string; description?: string; article_url?: string; published_utc?: string }> }>(
     `https://api.polygon.io/v2/reference/news?${params.toString()}`,
     timeoutMs
   );
@@ -365,7 +343,6 @@ export async function fetchNewsData(input: string | NewsQueryParams, defaultLimi
     runProvider("alphaVantage", Boolean(getEnv("ALPHA_VANTAGE_API_KEY")), () => fetchAlphaVantage(params.symbol, perProviderLimit, timeoutMs))
   ]);
 
-  // Calcular noticias crudas vs relevantes por proveedor
   const resultsWithFiltering = results.map((result) => {
     const rawCount = result.sources.length;
     const relevantCount = result.sources.filter((source) => isWithinDateRange(source.publishedAt, from, to) && isRelevantToSymbol(source, params.symbol)).length;
@@ -378,9 +355,7 @@ export async function fetchNewsData(input: string | NewsQueryParams, defaultLimi
       .filter((source) => isWithinDateRange(source.publishedAt, from, to) && isRelevantToSymbol(source, params.symbol))
   ).slice(0, params.limit);
 
-  const articles: AnalyzedNewsSource[] = await Promise.all(
-    remote.map((source) => analyzeNewsSource(source, params.symbol))
-  );
+  const articles: AnalyzedNewsSource[] = await Promise.all(remote.map((source) => analyzeNewsSource(source, params.symbol)));
 
   const data: NewsDataResponse = {
     symbol: params.symbol,

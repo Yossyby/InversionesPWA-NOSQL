@@ -2,7 +2,7 @@
 // FIC: Dashboard operativo principal — layout AppShell de 4 zonas con ActivityBar, LeftPanel y ChatPanel.
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { MessageSquare } from "lucide-react";
+import { MessageSquare, Trash2 } from "lucide-react";
 import { GlobalChatDrawer } from "../../pages/ai/GlobalChatDrawer";
 import { SuperChart } from "./SuperChart";
 import { OptionChainTableConnected } from "../options/OptionChainTable";
@@ -31,6 +31,23 @@ import { getInstitutionalAnalysis } from "../../services/institutional/instituti
 import type { FundamentalAnalysisResponse } from "../../services/fundamental/fundamentalApi";
 import { formatCurrency } from "../../utils/format";
 import { Tooltip } from "../../components/ui/Tooltip";
+
+// FIC: US-5 — compact buy/sell/hold counter chip shown above the confluence table. (EN)
+// FIC: US-5 — chip compacto de conteo compra/venta/hold mostrado sobre la tabla. (ES)
+function SignalMetricChip({ label, value, color }: { label: string; value: number; color: string }) {
+  return (
+    <span style={{
+      display: "inline-flex", alignItems: "center", gap: "6px",
+      padding: "5px 12px", borderRadius: "var(--radius-pill)",
+      border: `1px solid ${color}`, background: "var(--color-surface-raised)",
+      fontSize: "var(--font-size-xs)", fontWeight: "var(--font-weight-emphasis)" as any,
+    }}>
+      <span style={{ width: 7, height: 7, borderRadius: "50%", background: color, display: "inline-block" }} />
+      <span style={{ color: "var(--color-text-muted)" }}>{label}</span>
+      <strong style={{ color, fontVariantNumeric: "tabular-nums" }}>{value}</strong>
+    </span>
+  );
+}
 
 export function MainDashboard() {
   const isTestEnv = import.meta.env.MODE === "test";
@@ -70,6 +87,8 @@ export function MainDashboard() {
       prevSymbolRef.current = selectedSymbol;
       setSimulationRows(undefined);
       setSimulationVerdict(null);
+      setSimulationMetrics(null);
+      setNewsDateRange(undefined);
       setInstitutionalCoreWasActive(false);
       setOptionStrategyAnalysis(null);
       setFundamentalAnalysis(null);
@@ -90,6 +109,28 @@ export function MainDashboard() {
       return [...result.table, ...strategyRows];
     });
     setSimulationVerdict(result.verdict);
+    // FIC: US-5 — prefer backend-computed metrics; fall back to a client-side count. (EN)
+    if (result.signalMetrics) {
+      setSimulationMetrics(result.signalMetrics);
+    } else {
+      const rows = result.table ?? [];
+      setSimulationMetrics({
+        buy: rows.filter((r) => r.tipoSenal === "CALL").length,
+        sell: rows.filter((r) => r.tipoSenal === "PUT").length,
+        hold: rows.filter((r) => r.tipoSenal === "HOLD").length,
+        total: rows.length,
+      });
+    }
+  }, []);
+
+  // FIC: US-1 / US-3 — clear the results table and its derived state on demand. (EN)
+  // FIC: US-1 / US-3 — limpia la tabla de resultados y su estado derivado a demanda. (ES)
+  const handleClearTable = useCallback(() => {
+    setSimulationRows(undefined);
+    setSimulationVerdict(null);
+    setSimulationMetrics(null);
+    setSpreadRequest(null);
+    setInstitutionalCoreWasActive(false);
   }, []);
 
   const handleCoverageConfirmed = useCallback(

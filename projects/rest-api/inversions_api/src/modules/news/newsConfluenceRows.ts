@@ -17,6 +17,8 @@ interface BuildNewsRowsInput {
   previousRows?: ConfluenceSignalRow[];
   now?: Date;
   limit?: number;
+  from?: string;
+  to?: string;
 }
 
 const TIMEFRAME_SECONDS: Record<Timeframe, number> = {
@@ -51,9 +53,7 @@ function estadoFromArticle(article: AnalyzedNewsSource): EstadoSenal {
 
 function publishedDate(article: AnalyzedNewsSource, fallback: Date): string {
   const date = new Date(article.publishedAt);
-  return Number.isFinite(date.getTime())
-    ? date.toISOString().slice(0, 10)
-    : fallback.toISOString().slice(0, 10);
+  return Number.isFinite(date.getTime()) ? date.toISOString().slice(0, 10) : fallback.toISOString().slice(0, 10);
 }
 
 function shortProvider(provider: string): string {
@@ -92,7 +92,7 @@ function buildRowFromArticle(
   return {
     ticket: input.ticket,
     core: "A_NOTICIAS",
-    subCore: `${shortProvider(article.provider)} #${index + 1}`,
+    subCore: `${shortProvider(article.provider)} · ${String(index + 1).padStart(2, "0")}`,
     precio: input.precio,
     tipoSenal,
     fecha: publishedDate(article, computedAt),
@@ -108,9 +108,9 @@ function buildRowFromArticle(
     ia_revisada: false,
     delta_vs_anterior: deltaForArticle(input.previousRows, article, tipoSenal),
     observacion: {
-      objetivo: `Evaluar noticia real ${index + 1} de ${aggregate.articles.length} para ${input.ticket}.`,
-      senal: `${article.verdict} convertido a ${tipoSenal} con confianza ${(article.confidence * 100).toFixed(0)}%.`,
-      explicacion: `${article.title}. ${article.summary}. ${article.rationale}`,
+      objetivo: article.title,
+      senal: article.summary || `${article.verdict} convertido a ${tipoSenal} con confianza ${(article.confidence * 100).toFixed(0)}%.`,
+      explicacion: article.rationale || `${article.verdict} convertido a ${tipoSenal} con confianza ${(article.confidence * 100).toFixed(0)}%.`,
       metricas: {
         SENTIMIENTO: article.sentimentScore,
         CONFIANZA: article.confidence,
@@ -124,16 +124,31 @@ function buildRowFromArticle(
   };
 }
 
-/**
- * Construye filas reales del core A_NOTICIAS para la tabla canonica.
- * A diferencia del stub anterior, devuelve 1 fila por cada noticia real recibida.
- */
 export async function buildNewsConfluenceRows(input: BuildNewsRowsInput): Promise<ConfluenceSignalRow[]> {
   const computedAt = input.now ?? new Date();
-  const limit = Math.max(1, Math.min(20, Math.floor(input.limit ?? 8)));
-  const aggregate = await evaluateNewsImpact({ symbol: input.ticket, limit, includeFallback: false });
+  const limit = Math.max(1, Math.min(100, Math.floor(input.limit ?? 20)));
+  let aggregate = await evaluateNewsImpact({
+    symbol: input.ticket,
+    limit,
+    from: input.from,
+    to: input.to,
+    includeFallback: false
+  });
 
-  return aggregate.articles.map((article, index) =>
-    buildRowFromArticle(input, article, index, computedAt, aggregate)
-  );
+  // Las APIs de noticias normalmente entregan informacion reciente, mientras que la
+  // simulacion usa el rango de estrategia (por ejemplo hoy -> +30 dias). Si ese
+  // rango deja fuera las noticias ya recibidas, reintentamos sin rango para que
+  // A_NOTICIAS no vuelva al stub degradado cuando si hay evidencia real.
+  if (aggregate.articles.length === 0 && (input.from || input.to)) {
+    const relaxedAggregate = await evaluateNewsImpact({
+      symbol: input.ticket,
+      limit,
+      includeFallback: false
+    });
+    if (relaxedAggregate.articles.length > 0) {
+      aggregate = relaxedAggregate;
+    }
+  }
+
+  return aggregate.articles.map((article, index) => buildRowFromArticle(input, article, index, computedAt, aggregate));
 }

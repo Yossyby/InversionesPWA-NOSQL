@@ -1,10 +1,11 @@
-import { ExternalLink, ChevronLeft, ChevronRight } from "lucide-react";
-import { useEffect, useState } from "react";
+import { ExternalLink, ChevronLeft, ChevronRight, CalendarDays, Gauge, Newspaper, ShieldCheck } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import type { AnalyzedNewsSource, NewsAnalysisAggregate, NewsConfluenceResponse, NewsVerdict } from "../../services/news/newsApi";
 
 interface AnalysisResultProps {
   confluence?: NewsConfluenceResponse | null;
   manualAnalysis?: NewsAnalysisAggregate | null;
+  onArticleSelect?: (article: AnalyzedNewsSource) => void;
 }
 
 const PROVIDER_NAMES: Record<string, string> = {
@@ -17,6 +18,8 @@ const PROVIDER_NAMES: Record<string, string> = {
   url: "URL manual",
   tnmtAnalyzer: "TNMT"
 };
+
+const ITEMS_PER_PAGE = 12;
 
 function verdictLabel(verdict: NewsVerdict): string {
   if (verdict === "BUY") return "Compra / Alcista";
@@ -44,6 +47,28 @@ function formatDate(value: string): string {
   return date.toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" });
 }
 
+function formatDateTime(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Fecha no disponible";
+  return date.toLocaleString("es-MX", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+}
+
+function scoreAsPercent(score: number): number {
+  return Math.max(0, Math.min(100, Math.round((score + 1) * 50)));
+}
+
+function confidencePct(value: number): number {
+  return Math.max(0, Math.min(100, Math.round(value * 100)));
+}
+
+function sortArticles(articles: AnalyzedNewsSource[]): AnalyzedNewsSource[] {
+  return [...articles].sort((a, b) => {
+    const dateDiff = new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime();
+    if (Number.isFinite(dateDiff) && dateDiff !== 0) return dateDiff;
+    return b.confidence - a.confidence;
+  });
+}
+
 interface PaginationControlsProps {
   currentPage: number;
   totalPages: number;
@@ -53,93 +78,68 @@ interface PaginationControlsProps {
 
 function PaginationControls({ currentPage, totalPages, onPrevious, onNext }: PaginationControlsProps) {
   return (
-    <div style={{
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      gap: "12px",
-      padding: "16px 0",
-      borderTop: "1px solid var(--color-border-subtle)",
-      marginTop: "12px"
-    }}>
-      <button
-        type="button"
-        onClick={onPrevious}
-        disabled={currentPage === 0}
-        style={{
-          background: currentPage === 0 ? "var(--color-surface)" : "var(--color-accent)",
-          color: currentPage === 0 ? "var(--color-text-muted)" : "#fff",
-          border: "none",
-          borderRadius: "var(--radius-sm)",
-          padding: "8px 12px",
-          cursor: currentPage === 0 ? "default" : "pointer",
-          display: "flex",
-          alignItems: "center",
-          gap: "6px",
-          fontSize: "0.875rem",
-          fontWeight: 500,
-          opacity: currentPage === 0 ? 0.5 : 1,
-        }}
-      >
+    <div className="tnmt-pagination">
+      <button type="button" onClick={onPrevious} disabled={currentPage === 0}>
         <ChevronLeft size={16} /> Anterior
       </button>
-      
-      <span style={{
-        fontSize: "0.875rem",
-        color: "var(--color-text-muted)",
-        fontWeight: 500
-      }}>
-        Página {currentPage + 1} de {totalPages}
-      </span>
-
-      <button
-        type="button"
-        onClick={onNext}
-        disabled={currentPage === totalPages - 1}
-        style={{
-          background: currentPage === totalPages - 1 ? "var(--color-surface)" : "var(--color-accent)",
-          color: currentPage === totalPages - 1 ? "var(--color-text-muted)" : "#fff",
-          border: "none",
-          borderRadius: "var(--radius-sm)",
-          padding: "8px 12px",
-          cursor: currentPage === totalPages - 1 ? "default" : "pointer",
-          display: "flex",
-          alignItems: "center",
-          gap: "6px",
-          fontSize: "0.875rem",
-          fontWeight: 500,
-          opacity: currentPage === totalPages - 1 ? 0.5 : 1,
-        }}
-      >
+      <span>Página {currentPage + 1} de {totalPages}</span>
+      <button type="button" onClick={onNext} disabled={currentPage === totalPages - 1}>
         Siguiente <ChevronRight size={16} />
       </button>
     </div>
   );
 }
 
-function SourceCard({ source }: { source: AnalyzedNewsSource }) {
+function SignalMeter({ value, verdict }: { value: number; verdict: NewsVerdict }) {
+  const percent = confidencePct(value);
   return (
-    <article className="tnmt-article-card">
+    <div className="tnmt-signal-meter" aria-label={`Confianza ${percent}%`}>
+      <span className={`tnmt-signal-meter__fill ${verdictClass(verdict)}`} style={{ width: `${percent}%` }} />
+    </div>
+  );
+}
+
+function SourceCard({ source, index, onSelect }: { source: AnalyzedNewsSource; index: number; onSelect?: (article: AnalyzedNewsSource) => void }) {
+  return (
+    <article
+      className={`tnmt-article-card ${verdictClass(source.verdict)}`}
+      role={onSelect ? "button" : undefined}
+      tabIndex={onSelect ? 0 : undefined}
+      onClick={() => onSelect?.(source)}
+      onKeyDown={(event) => {
+        if (!onSelect) return;
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onSelect(source);
+        }
+      }}
+    >
       <div className="tnmt-article-card__top">
+        <span className="tnmt-article-rank">#{String(index + 1).padStart(2, "0")}</span>
         <div className="tnmt-article-badges">
           <span className={`tnmt-verdict ${verdictClass(source.verdict)}`}>{source.verdict}</span>
-          <span className={`tnmt-provider-badge ${providerClass(source.provider)}`}>Fuente: {providerName(source.provider)}</span>
+          <span className={`tnmt-provider-badge ${providerClass(source.provider)}`}>{providerName(source.provider)}</span>
         </div>
-        <span className="tnmt-confidence-label">{Math.round(source.confidence * 100)}% confianza</span>
       </div>
-      <div className="tnmt-article-meta">
-        <span>{formatDate(source.publishedAt)}</span>
-        {source.url ? <span>URL verificable</span> : <span>Sin URL directa</span>}
+
+      <h4 title={source.title}>{source.title}</h4>
+      <p>{source.summary || source.rationale || "Sin resumen disponible."}</p>
+
+      <div className="tnmt-article-meta-grid">
+        <span><CalendarDays size={13} /> {formatDate(source.publishedAt)}</span>
+        <span><Gauge size={13} /> {confidencePct(source.confidence)}% confianza</span>
+        <span><ShieldCheck size={13} /> {confidencePct(source.credibilityScore)}% credibilidad</span>
       </div>
-      <h4>{source.title}</h4>
-      <p>{source.summary}</p>
+
+      <SignalMeter value={source.confidence} verdict={source.verdict} />
+
       <div className="tnmt-tags">
         <span>Sentimiento: {source.sentiment}</span>
-        <span>Credibilidad: {Math.round(source.credibilityScore * 100)}%</span>
         {source.affectedSymbols.map((symbol) => <span key={symbol}>{symbol}</span>)}
       </div>
+
       {source.url && (
-        <a className="tnmt-source-link" href={source.url} target="_blank" rel="noreferrer">
+        <a className="tnmt-source-link" href={source.url} target="_blank" rel="noreferrer" onClick={(event) => event.stopPropagation()}>
           Abrir noticia real <ExternalLink size={14} />
         </a>
       )}
@@ -148,17 +148,16 @@ function SourceCard({ source }: { source: AnalyzedNewsSource }) {
 }
 
 function ProviderBreakdown({ articles }: { articles: AnalyzedNewsSource[] }) {
-  const counts = articles.reduce<Record<string, number>>((acc, article) => {
+  const entries = Object.entries(articles.reduce<Record<string, number>>((acc, article) => {
     acc[article.provider] = (acc[article.provider] ?? 0) + 1;
     return acc;
-  }, {});
+  }, {}));
 
-  const entries = Object.entries(counts);
   if (entries.length === 0) return null;
 
   return (
     <div className="tnmt-provider-breakdown">
-      <strong>Noticias mostradas por proveedor:</strong>
+      <strong>Distribución visible por proveedor</strong>
       <div>
         {entries.map(([provider, count]) => (
           <span key={provider} className={`tnmt-provider-badge ${providerClass(provider)}`}>
@@ -170,11 +169,66 @@ function ProviderBreakdown({ articles }: { articles: AnalyzedNewsSource[] }) {
   );
 }
 
-export function AnalysisResult({ confluence, manualAnalysis }: AnalysisResultProps) {
+function ArticlesCollection({
+  title,
+  subtitle,
+  articles,
+  currentPage,
+  onPageChange,
+  onArticleSelect
+}: {
+  title: string;
+  subtitle: string;
+  articles: AnalyzedNewsSource[];
+  currentPage: number;
+  onPageChange: (page: number) => void;
+  onArticleSelect?: (article: AnalyzedNewsSource) => void;
+}) {
+  const totalPages = Math.max(1, Math.ceil(articles.length / ITEMS_PER_PAGE));
+  const startIdx = currentPage * ITEMS_PER_PAGE;
+  const pageItems = articles.slice(startIdx, startIdx + ITEMS_PER_PAGE);
+  const shownFrom = articles.length === 0 ? 0 : startIdx + 1;
+  const shownTo = Math.min(startIdx + pageItems.length, articles.length);
+
+  return (
+    <section className="tnmt-news-collection">
+      <div className="tnmt-news-collection__header">
+        <div>
+          <p className="tnmt-eyebrow"><Newspaper size={15} /> Noticias encontradas</p>
+          <h4>{title}</h4>
+          <span>{subtitle}</span>
+        </div>
+        <div className="tnmt-news-collection__count">
+          <strong>{articles.length}</strong>
+          <span>noticias finales</span>
+        </div>
+      </div>
+
+      <div className="tnmt-news-collection__range">
+        Mostrando {shownFrom}-{shownTo} de {articles.length}. Cada tarjeta corresponde a una noticia real después de filtrar y quitar duplicados.
+      </div>
+
+      <div className="tnmt-articles-grid">
+        {pageItems.map((article, index) => (
+          <SourceCard key={article.id} source={article} index={startIdx + index} onSelect={onArticleSelect} />
+        ))}
+      </div>
+
+      {totalPages > 1 && (
+        <PaginationControls
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPrevious={() => onPageChange(Math.max(0, currentPage - 1))}
+          onNext={() => onPageChange(Math.min(totalPages - 1, currentPage + 1))}
+        />
+      )}
+    </section>
+  );
+}
+
+export function AnalysisResult({ confluence, manualAnalysis, onArticleSelect }: AnalysisResultProps) {
   const [currentPageConfluence, setCurrentPageConfluence] = useState(0);
   const [currentPageManual, setCurrentPageManual] = useState(0);
-  
-  const ITEMS_PER_PAGE = 12;
 
   useEffect(() => {
     setCurrentPageConfluence(0);
@@ -184,31 +238,14 @@ export function AnalysisResult({ confluence, manualAnalysis }: AnalysisResultPro
     setCurrentPageManual(0);
   }, [manualAnalysis?.generatedAt, manualAnalysis?.symbol, manualAnalysis?.sources.length]);
 
+  const sortedConfluenceArticles = useMemo(() => sortArticles(confluence?.articles ?? []), [confluence?.articles]);
+  const sortedManualArticles = useMemo(() => sortArticles(manualAnalysis?.sources ?? []), [manualAnalysis?.sources]);
+
   if (!confluence && !manualAnalysis) {
     return <p className="tnmt-empty">Carga noticias reales del ticker o pega fuentes propias para ver resultados.</p>;
   }
 
   const noRealNews = confluence && confluence.articles.length === 0;
-
-  // Ordenar y paginar artículos de confluencia (por confianza, mayor primero)
-  const sortedConfluenceArticles = confluence?.articles 
-    ? [...confluence.articles].sort((a, b) => b.confidence - a.confidence)
-    : [];
-  
-  const confluencePages = Math.ceil(sortedConfluenceArticles.length / ITEMS_PER_PAGE);
-  const confluenceStartIdx = currentPageConfluence * ITEMS_PER_PAGE;
-  const confluenceEndIdx = confluenceStartIdx + ITEMS_PER_PAGE;
-  const confluencePageItems = sortedConfluenceArticles.slice(confluenceStartIdx, confluenceEndIdx);
-
-  // Ordenar y paginar artículos manuales (por confianza, mayor primero)
-  const sortedManualArticles = manualAnalysis?.sources
-    ? [...manualAnalysis.sources].sort((a, b) => b.confidence - a.confidence)
-    : [];
-  
-  const manualPages = Math.ceil(sortedManualArticles.length / ITEMS_PER_PAGE);
-  const manualStartIdx = currentPageManual * ITEMS_PER_PAGE;
-  const manualEndIdx = manualStartIdx + ITEMS_PER_PAGE;
-  const manualPageItems = sortedManualArticles.slice(manualStartIdx, manualEndIdx);
 
   return (
     <div className="tnmt-results">
@@ -218,16 +255,20 @@ export function AnalysisResult({ confluence, manualAnalysis }: AnalysisResultPro
             <div>
               <p className="tnmt-eyebrow">Confluencia por noticias reales</p>
               <h3>{confluence.symbol} · {verdictLabel(confluence.verdict)}</h3>
+              <span className="tnmt-result-timestamp">Actualizado: {formatDateTime(confluence.generatedAt)}</span>
             </div>
-            <span className={`tnmt-score ${verdictClass(confluence.verdict)}`}>{Math.round((confluence.score + 1) * 50)}/100</span>
+            <span className={`tnmt-score ${verdictClass(confluence.verdict)}`}>{scoreAsPercent(confluence.score)}/100</span>
           </div>
+
           <p className="tnmt-advice">{confluence.recommendation?.summary ?? "Señal generada desde noticias y sentimiento TNMT."}</p>
+
           <div className="tnmt-mini-grid">
-            <span>Sentimiento: <strong>{confluence.sentiment}</strong></span>
-            <span>Confianza: <strong>{Math.round(confluence.confidence * 100)}%</strong></span>
-            <span>Fuentes reales: <strong>{confluence.articles.length}</strong></span>
-            <span>Modo: <strong>{confluence.realDataOnly ? "100% real" : "mixto"}</strong></span>
+            <span>Sentimiento <strong>{confluence.sentiment}</strong></span>
+            <span>Confianza <strong>{confidencePct(confluence.confidence)}%</strong></span>
+            <span>Noticias finales <strong>{confluence.articles.length}</strong></span>
+            <span>Modo <strong>{confluence.realDataOnly ? "100% real" : "mixto"}</strong></span>
           </div>
+
           <ProviderBreakdown articles={confluence.articles} />
 
           {noRealNews ? (
@@ -236,19 +277,14 @@ export function AnalysisResult({ confluence, manualAnalysis }: AnalysisResultPro
               <p>Agrega llaves de Finnhub, NewsAPI, Polygon o Alpha Vantage en el .env para ampliar la cobertura. No se generaron noticias demo.</p>
             </div>
           ) : (
-            <>
-              <div className="tnmt-articles-grid">
-                {confluencePageItems.map((article) => <SourceCard key={article.id} source={article} />)}
-              </div>
-              {confluencePages > 1 && (
-                <PaginationControls
-                  currentPage={currentPageConfluence}
-                  totalPages={confluencePages}
-                  onPrevious={() => setCurrentPageConfluence((p) => Math.max(0, p - 1))}
-                  onNext={() => setCurrentPageConfluence((p) => Math.min(confluencePages - 1, p + 1))}
-                />
-              )}
-            </>
+            <ArticlesCollection
+              title={`Todas las noticias de ${confluence.symbol}`}
+              subtitle="Ordenadas por fecha; da clic en cualquier tarjeta para abrir el detalle del análisis."
+              articles={sortedConfluenceArticles}
+              currentPage={currentPageConfluence}
+              onPageChange={setCurrentPageConfluence}
+              onArticleSelect={onArticleSelect}
+            />
           )}
         </section>
       )}
@@ -260,25 +296,24 @@ export function AnalysisResult({ confluence, manualAnalysis }: AnalysisResultPro
               <p className="tnmt-eyebrow">Análisis manual de fuentes</p>
               <h3>{manualAnalysis.symbol} · {verdictLabel(manualAnalysis.verdict)}</h3>
             </div>
-            <span className={`tnmt-score ${verdictClass(manualAnalysis.verdict)}`}>{Math.round((manualAnalysis.sentimentScore + 1) * 50)}/100</span>
+            <span className={`tnmt-score ${verdictClass(manualAnalysis.verdict)}`}>{scoreAsPercent(manualAnalysis.sentimentScore)}/100</span>
           </div>
+
           <div className="tnmt-mini-grid">
-            <span>BUY: <strong>{manualAnalysis.buyCount}</strong></span>
-            <span>HOLD: <strong>{manualAnalysis.holdCount}</strong></span>
-            <span>SELL: <strong>{manualAnalysis.sellCount}</strong></span>
+            <span>BUY <strong>{manualAnalysis.buyCount}</strong></span>
+            <span>HOLD <strong>{manualAnalysis.holdCount}</strong></span>
+            <span>SELL <strong>{manualAnalysis.sellCount}</strong></span>
           </div>
+
           <ProviderBreakdown articles={manualAnalysis.sources} />
-          <div className="tnmt-articles-grid">
-            {manualPageItems.map((source) => <SourceCard key={source.id} source={source} />)}
-          </div>
-          {manualPages > 1 && (
-            <PaginationControls
-              currentPage={currentPageManual}
-              totalPages={manualPages}
-              onPrevious={() => setCurrentPageManual((p) => Math.max(0, p - 1))}
-              onNext={() => setCurrentPageManual((p) => Math.min(manualPages - 1, p + 1))}
-            />
-          )}
+          <ArticlesCollection
+            title={`Fuentes manuales de ${manualAnalysis.symbol}`}
+            subtitle="Fuentes pegadas por el usuario y analizadas con el mismo motor de sentimiento."
+            articles={sortedManualArticles}
+            currentPage={currentPageManual}
+            onPageChange={setCurrentPageManual}
+            onArticleSelect={onArticleSelect}
+          />
         </section>
       )}
     </div>

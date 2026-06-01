@@ -97,9 +97,7 @@ export function NewsSourcesAnalyzer({ symbol = "SPY", dateRange, onArticleSelect
   const handleArticleClick = (article: AnalyzedNewsSource) => {
     setSelectedArticle(article);
     setShowModal(true);
-    if (onArticleSelect) {
-      onArticleSelect(article);
-    }
+    onArticleSelect?.(article);
   };
 
   useEffect(() => {
@@ -172,11 +170,18 @@ export function NewsSourcesAnalyzer({ symbol = "SPY", dateRange, onArticleSelect
         </div>
         <div className="tnmt-news-column tnmt-news-column--results">
           {loading && <div className="tnmt-loading">Consultando APIs reales y calculando sentimiento...</div>}
-          <AnalysisResult confluence={confluence} manualAnalysis={manualAnalysis} />
+          <AnalysisResult confluence={confluence} manualAnalysis={manualAnalysis} onArticleSelect={handleArticleClick} />
         </div>
       </div>
 
-      <NewsDetailModal isOpen={showModal} onClose={() => setShowModal(false)} article={selectedArticle} />
+      <NewsDetailModal
+        isOpen={showModal}
+        onClose={() => {
+          setShowModal(false);
+          setSelectedArticle(null);
+        }}
+        article={selectedArticle}
+      />
     </section>
   );
 }

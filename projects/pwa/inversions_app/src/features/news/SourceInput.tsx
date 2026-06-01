@@ -57,3 +57,4 @@ export function SourceInput({ symbol, onAdd }: SourceInputProps) {
     </div>
   );
 }
+
