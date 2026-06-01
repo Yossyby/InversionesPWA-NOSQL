@@ -379,9 +379,27 @@ export function ConfluenceSignalsTable({ symbol, rows: rowsProp, activeStrategy 
 
             {/* FIC: Non-A_IA: ObservationsTab when stubRow available (upstream), else plain stubResumen. (EN) */}
             {stubCore !== "A_IA" && stubRow && (
-              <div style={{ flex: 1, overflowY: "auto", marginBottom: "1.25rem" }}>
-                <ObservationsTab row={stubRow} activeStrategy={activeStrategy} />
-              </div>
+              <>
+                <div style={{
+                  borderTop: "1px solid var(--color-border-subtle)",
+                  paddingTop: "1rem",
+                  marginBottom: "0.5rem",
+                  flexShrink: 0
+                }}>
+                  <span style={{
+                    fontSize: "0.68rem",
+                    fontWeight: 700,
+                    color: "var(--color-text-muted)",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.07em"
+                  }}>
+                    Observaciones
+                  </span>
+                </div>
+                <div style={{ flex: 1, overflowY: "auto", marginBottom: "1.25rem", background: "var(--color-surface-raised)", borderRadius: "var(--radius-sm)", padding: "0.9rem 1rem" }}>
+                  <ObservationsTab row={stubRow} activeStrategy={activeStrategy} />
+                </div>
+              </>
             )}
 
 
