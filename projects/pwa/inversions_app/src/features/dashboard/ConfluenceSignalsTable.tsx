@@ -205,7 +205,7 @@ export function ConfluenceSignalsTable({ symbol, rows: rowsProp, activeStrategy 
                   } else {
                     setStubCore(row.core);
                     setStubResumen(row.resumen_analisis ?? "");
-                    setStubRow(row.core === "A_TECNICO" ? row : null);
+                    setStubRow(row);
                     if (row.core === "A_IA") {
                       setStubRow(row);
                       setAiModalOpen(true);
