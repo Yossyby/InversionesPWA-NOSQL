@@ -17,6 +17,22 @@ import { InstitutionalDetailModal } from "../institutional/InstitutionalDetailMo
 import { MarkdownContent } from "../../components/ui/MarkdownContent";
 
 // FIC: Columnas con ancho estable; la tabla se desplaza horizontalmente antes de aplastar texto.
+function providerAccent(source: string): string {
+  const s = source.toLowerCase();
+  if (s.includes("yahoo")) return "#7c3aed";
+  if (s.includes("finnhub")) return "#0ea5e9";
+  if (s.includes("newsapi")) return "#f59e0b";
+  if (s.includes("polygon")) return "#10b981";
+  if (s.includes("alpha")) return "#ef4444";
+  return "var(--color-accent)";
+}
+
+function compactNewsTitle(row: ConfluenceSignalRow): string {
+  const title = row.observacion?.objetivo ?? "";
+  if (title.length <= 60) return title;
+  return title.slice(0, 57) + "…";
+}
+
 const TABLE_COLUMNS: Array<{ key: keyof ConfluenceSignalRow | "estrategia"; label: string; width: number }> = [
   { key: "ticket",    label: "TICKET",     width: 76  },
   { key: "core",      label: "CORE",       width: 132 },

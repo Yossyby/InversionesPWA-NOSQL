@@ -689,9 +689,9 @@ export function SimulationControlPanel({
     setCoresOn(defaultCoresOn());
     setIndicadoresOn(defaultIndicadoresOn());
     setFechaHistorica("");
-    setSpreadParams(DEFAULT_SPREAD_PARAMS);
+    setCoverageParams(DEFAULT_COVERAGE_PARAMS);
+    setTermParams(DEFAULT_TERM_PARAMS);
     setError(null);
-    onClear?.();
   };
 
   const run = async () => {

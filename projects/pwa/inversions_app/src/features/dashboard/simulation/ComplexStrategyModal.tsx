@@ -421,16 +421,16 @@ function SummaryDetailModal({ row, result, onClose }: { row: ConfluenceSignalRow
                   {e.mensaje}
                 </div>
               ))}
-              {risk?.resumen && (
+              {risk?.resumen ? (
                 <div style={{ fontSize: "0.72rem", color: "var(--color-text-muted)", padding: "0.35rem 0", borderBottom: "1px solid var(--color-border-subtle)", fontStyle: "italic" }}>
-                  {risk.resumen as string}
+                  {String(risk.resumen)}
                 </div>
-              )}
-              {risk?.accion_recomendada && (
+              ) : null}
+              {risk?.accion_recomendada ? (
                 <div style={{ fontSize: "0.78rem", fontWeight: 600, padding: "0.35rem 0" }}>
-                  {risk.accion_recomendada as string}
+                  {String(risk.accion_recomendada)}
                 </div>
-              )}
+              ) : null}
             </div>
           </div>
 
@@ -468,7 +468,7 @@ function SummaryDetailModal({ row, result, onClose }: { row: ConfluenceSignalRow
               <p style={{ fontSize: "0.78rem", color: "var(--color-text-muted)", fontStyle: "italic" }}>Sin datos de escenarios</p>
             )}
 
-            {simulation?.distribucion_pnl && (
+            {simulation?.distribucion_pnl ? (
               <div style={{ marginTop: "1rem" }}>
                 <h4 style={{ margin: "0 0 0.4rem", fontSize: "0.75rem", textTransform: "uppercase", color: "var(--color-text-muted)", letterSpacing: "0.06em" }}>
                   Distribución P&L (Monte Carlo)
@@ -487,7 +487,7 @@ function SummaryDetailModal({ row, result, onClose }: { row: ConfluenceSignalRow
                   ))}
                 </div>
               </div>
-            )}
+            ) : null}
           </div>
         </div>
       </div>

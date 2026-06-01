@@ -1,8 +1,8 @@
 // FIC: Institutional analysis API service — wraps /api/institutional endpoints with cache and AbortSignal. (EN)
 // FIC: Servicio API de análisis institucional — envuelve endpoints /api/institutional con caché y AbortSignal. (ES)
 
-import { getAuthHeaders } from "../signals/signalApi";
-import { getCached, setCache } from "../apiCache";
+import { getAuthHeaders } from "../services/signals/signalApi";
+import { getCached, setCache } from "../services/apiCache";
 
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes / 5 minutos
 

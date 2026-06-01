@@ -2,11 +2,11 @@
 // FIC: InstitutionalDetailModal — modal de contenido con pestañas: zonas, tendencias, vencimientos y posiciones. (ES)
 
 import React, { useState } from "react";
-import { ContentModal } from "../../components/ui/ContentModal";
-import { MarkdownContent } from "../../components/ui/MarkdownContent";
-import type { InstitutionalAnalysisResponse } from "../../services/institutional/institutionalApi";
-import type { ConfluenceSignalRow } from "../../services/signals/confluenceTableApi";
-import { ObservationsTab } from "../dashboard/ObservationsTab";
+import { ContentModal } from "../components/ui/ContentModal";
+import { MarkdownContent } from "../components/ui/MarkdownContent";
+import type { InstitutionalAnalysisResponse } from "./institutionalApi";
+import type { ConfluenceSignalRow } from "../services/signals/confluenceTableApi";
+import { ObservationsTab } from "../features/dashboard/ObservationsTab";
 
 interface Props {
   isOpen: boolean;

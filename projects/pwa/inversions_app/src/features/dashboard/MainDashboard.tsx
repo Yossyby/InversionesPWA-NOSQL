@@ -20,7 +20,7 @@ import { AppShell } from "../../layouts/AppShell";
 import { ActivityBar } from "../../components/ui/ActivityBar";
 import { LeftPanel } from "../sidebar/LeftPanel";
 import { Badge } from "../../components/ui/Badge";
-import type { ConfluenceSignalRow, SimulationResponse, CoreId } from "../../services/signals/confluenceTableApi";
+import type { ConfluenceSignalRow, SimulationResponse, CoreId, SignalMetrics } from "../../services/signals/confluenceTableApi";
 import { buildComplexStrategyRows, STRATEGY_CORE } from "../../services/strategies/buildStrategyRows";
 import { ComplexStrategyModal } from "./simulation/ComplexStrategyModal";
 import type { FromChainResponse } from "../../services/strategies/strategyApi";
@@ -65,7 +65,10 @@ export function MainDashboard() {
   const [complexResult, setComplexResult] = useState<FromChainResponse | null>(null);
   const [strategyModalRow, setStrategyModalRow] = useState<ConfluenceSignalRow | null>(null);
   const [strategyError, setStrategyError] = useState<string | null>(null);
+  const [simulationMetrics, setSimulationMetrics] = useState<SignalMetrics | null>(null);
   const [institutionalCoreWasActive, setInstitutionalCoreWasActive] = useState(false);
+  const [, setNewsDateRange] = useState<string | undefined>(undefined);
+  const [, setSpreadRequest] = useState<unknown>(null);
   const [copilotOpen, setCopilotOpen] = useState(false);
   const [selectedStrikeData, setSelectedStrikeData] = useState<{
     strike: number; type: "call" | "put"; premium: number; iv: number;

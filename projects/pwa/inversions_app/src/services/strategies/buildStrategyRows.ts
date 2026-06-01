@@ -128,7 +128,7 @@ export function buildComplexStrategyRows(
   // ═══════════════════════════════════════════════════════════════════════════
 
   const legRows: ConfluenceSignalRow[] = premiums.map((prem, idx) => {
-    const p = prem as Record<string, unknown>;
+    const p = prem as unknown as Record<string, unknown>;
     const strike   = Number(prem.strike);
     const tipo     = String(prem.tipo).toUpperCase();
     const posicion = String(prem.posicion).toLowerCase();
