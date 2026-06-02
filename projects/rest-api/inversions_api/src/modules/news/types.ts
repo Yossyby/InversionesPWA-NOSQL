@@ -66,3 +66,88 @@ export interface SourceAnalysisResult {
   disclaimer: string;
   timestamp: string;
 }
+
+// FIC: Alias used by the ultrafic news impact engine — maps 1:1 to NewsOutlook.
+export type NewsVerdict = "BUY" | "SELL" | "HOLD";
+
+// FIC: Supported news provider identifiers.
+export type NewsProviderId =
+  | "manual"
+  | "url"
+  | "yahooFinance"
+  | "finnhub"
+  | "newsapi"
+  | "alphaVantage"
+  | "polygon"
+  | "tnmtAnalyzer";
+
+// FIC: Raw news item from any provider before sentiment analysis.
+export interface NewsSourceInput {
+  id: string;
+  title?: string;
+  text?: string;
+  url?: string;
+  provider: NewsProviderId;
+  publishedAt?: string;
+  symbol?: string;
+}
+
+// FIC: Per-provider health status included in NewsDataResponse.
+export interface NewsProviderStatus {
+  id: NewsProviderId;
+  label: string;
+  enabled: boolean;
+  ok: boolean;
+  count: number;
+  message: string;
+  rawCount?: number;
+  relevantCount?: number;
+}
+
+// FIC: Query parameters accepted by fetchNewsData.
+export interface NewsQueryParams {
+  symbol: string;
+  limit?: number;
+  from?: string;
+  to?: string;
+  includeFallback?: boolean;
+}
+
+// FIC: Full response returned by fetchNewsData — articles + provider diagnostics.
+export interface NewsDataResponse {
+  symbol: string;
+  generatedAt: string;
+  fromCache: boolean;
+  articles: AnalyzedNewsSource[];
+  providerStatus: NewsProviderStatus[];
+  realDataOnly: boolean;
+}
+
+// FIC: Individual analyzed news article produced by the news data service.
+export interface AnalyzedNewsSource {
+  id: string;
+  url?: string;
+  title: string;
+  summary?: string;
+  rationale?: string;
+  verdict: NewsVerdict;
+  sentimentScore: number;
+  confidence: number;
+  credibilityScore: number;
+  provider: string;
+  publishedAt: string;
+}
+
+// FIC: Aggregate response returned by evaluateNewsImpact.
+export interface NewsImpactResponse {
+  symbol: string;
+  generatedAt: string;
+  score: number;
+  sentiment: "positive" | "negative" | "neutral";
+  verdict: NewsVerdict;
+  confidence: number;
+  articles: AnalyzedNewsSource[];
+  providerStatus?: unknown;
+  realDataOnly: boolean;
+  evidence: Array<{ sourceId: string; verdict: NewsVerdict; confidence: number; rationale?: string }>;
+}

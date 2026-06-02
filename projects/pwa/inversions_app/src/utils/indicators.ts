@@ -112,3 +112,4 @@ export function calcBollingerBands(candles: OHLCVData[], period = 20, mult = 2):
   }
   return result;
 }
+

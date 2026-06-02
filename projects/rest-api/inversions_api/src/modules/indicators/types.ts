@@ -137,7 +137,13 @@ export type MetricKey =
   | "SOPORTES"
   | "RESISTENCIAS"
   | "ATR"
-  | "CANDLES_ANALYZED";
+  | "CANDLES_ANALYZED"
+  | "PREPROMPT"
+  | "VALOR_ENTRADA"
+  // FIC: A_NOTICIAS engine metrics (TEAM-06).
+  | "CONFIANZA"
+  | "CREDIBILIDAD"
+  | "PROVEEDOR";
 
 // FIC: Observacion estructurada que reemplaza el texto libre de la confluencia v1.
 // FIC: Replaces the free-form metadata bag with a typed observation (FR-020).
@@ -182,6 +188,7 @@ export interface ConfluenceSignalRow {
   disclaimer_id?: string;
   delta_vs_anterior: DeltaPrev;
   observacion: SignalObservation;
+  estrategia?: string;
   optionLeg?: OptionGreeks;
   algorithm_version: string;
   computed_at: string;
@@ -199,7 +206,7 @@ export interface SimulationRequest {
   runtimeMode: "ONLINE" | "OFFLINE";
   coresHabilitados: CoreId[];
   indicadoresHabilitados: SubCoreIndicador[];
-  estrategia: string; // "IRON_CONDOR" | ... — lista canonica abierta (T111)
+  estrategia?: string; // "IRON_CONDOR" | ... — lista canonica abierta (T111); opcional cuando no se selecciona estrategia
   toleranciaRiesgo: "BAJO" | "MEDIO" | "ALTO";
   // FIC: Optional historical "as-of" date (ISO yyyy-mm-dd). When set, the core truncates the
   // FIC: candle series at end-of-day of this date and computes the signal AS IF it were that day,

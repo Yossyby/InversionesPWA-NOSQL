@@ -52,6 +52,7 @@ export interface ConfluenceSignalRow {
   disclaimer_id?: string;
   delta_vs_anterior: DeltaPrev;
   observacion: SignalObservation;
+  estrategia?: string;
   resumen_analisis?: string;
   optionLeg?: OptionGreeks;
   algorithm_version: string;
@@ -140,6 +141,9 @@ export async function runSimulation(payload: SimulationRequestPayload): Promise<
 
 export const CANONICAL_ESTRATEGIAS = [
   "IRON_CONDOR",
+  "IRON_BUTTERFLY",
+  "BUTTERFLY_SPREAD",
+  "CONDOR",
   "BULL_CALL_SPREAD",
   "BEAR_PUT_SPREAD",
   "LONG_CALL",
@@ -149,7 +153,10 @@ export const CANONICAL_ESTRATEGIAS = [
   "STRADDLE",
   "STRANGLE",
   "BUTTERFLY",
-  "COVERED_CALL",
+  "PROTECTIVE_PUT",
+  "MARRIED_PUT",
+  "COLLAR_PUT",
+  "COVERED_STRADDLE",
   "CALENDAR_SPREAD",
   "DIAGONAL_SPREAD",
   "WHEEL",

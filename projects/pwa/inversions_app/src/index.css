@@ -153,6 +153,7 @@ tbody tr:hover td { background: var(--color-surface-raised); }
 ::-webkit-scrollbar-track { background: var(--color-bg); }
 ::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: var(--radius-xs); }
 
+
 /* AppShell dashboard responsiveness */
 .dashboard-main-content {
   width: 100%;

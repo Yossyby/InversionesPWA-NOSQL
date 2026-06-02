@@ -7,6 +7,8 @@ import { buildCoreStubs } from "../../modules/indicators/coreStubs";
 import { computeConfluence } from "../../modules/indicators/confluence";
 import { getCandles, isSupportedTimeframe } from "../../modules/indicators/ohlcSource";
 import { respondError } from "../../modules/indicators/errors";
+import { runAiCore } from "../../modules/simulation/aiCoreRunner";
+import { buildNewsConfluenceRows } from "../../modules/news/newsConfluenceRows";
 import {
   ALGORITHM_VERSION,
   ALL_CORE_IDS,
@@ -66,6 +68,7 @@ confluenceTableRouter.get("/confluence-table", async (req, res) => {
   }
 
   const verdict = computeConfluence(candles, { symbol: ticket, timeframe });
+  const latestPrice = candles[candles.length - 1]?.close ?? candles[candles.length - 1]?.open ?? 0;
 
   let rows: ConfluenceSignalRow[] = [];
   const wantsIndicadores = !coresFilter || coresFilter.includes("A_INDICADORES");
@@ -73,7 +76,22 @@ confluenceTableRouter.get("/confluence-table", async (req, res) => {
     rows = buildIndicatorsTable({ ticket, timeframe, candles });
   }
 
-  const stubCores = (["A_FUNDAMENTAL", "A_TECNICO", "A_INSTITUCIONAL", "A_NOTICIAS", "A_IA"] as CoreId[])
+  const wantsNoticias = !coresFilter || coresFilter.includes("A_NOTICIAS");
+  if (wantsNoticias) {
+    const newsRows = await buildNewsConfluenceRows({
+        ticket,
+        timeframe,
+        precio: latestPrice,
+        sourceInputHash: verdict.source_input_hash,
+        now: new Date(),
+        limit: 100,
+        from: fromRaw,
+        to: toRaw
+      });
+    rows = [...rows, ...newsRows];
+  }
+
+  const stubCores = (["A_FUNDAMENTAL", "A_TECNICO", "A_INSTITUCIONAL"] as CoreId[])
     .filter((c) => !coresFilter || coresFilter.includes(c));
   if (stubCores.length > 0) {
     rows = [
@@ -85,6 +103,18 @@ confluenceTableRouter.get("/confluence-table", async (req, res) => {
         sourceInputHash: verdict.source_input_hash
       })
     ];
+  }
+
+  const wantsIa = !coresFilter || coresFilter.includes("A_IA");
+  if (wantsIa) {
+    const aiRow = await runAiCore({
+      ticket,
+      timeframe,
+      sourceInputHash: verdict.source_input_hash,
+      computedAt: new Date(),
+      precalculatedRows: rows
+    });
+    rows.push(aiRow);
   }
 
   return res.status(200).json({

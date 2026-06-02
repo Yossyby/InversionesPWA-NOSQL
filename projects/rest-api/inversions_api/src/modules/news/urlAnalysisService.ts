@@ -6,7 +6,7 @@ import {
   type NewsSentimentAnalyzer
 } from "./sentimentService";
 import { resolveVerdict } from "./investmentAdvisor";
-import { NEWS_DISCLAIMER, type NewsArticle, type SentimentResult, type SourceAnalysisResult } from "./types";
+import { NEWS_DISCLAIMER, type AnalyzedNewsSource, type NewsArticle, type NewsSourceInput, type NewsVerdict, type SentimentResult, type SourceAnalysisResult } from "./types";
 
 export interface URLContent {
   url: string;
@@ -225,4 +225,37 @@ function hostnameOf(url: string): string {
   } catch {
     return url;
   }
+}
+
+// FIC: Analyze a raw NewsSourceInput (from any provider) and return a scored AnalyzedNewsSource.
+// FIC: Analiza un NewsSourceInput crudo (de cualquier proveedor) y devuelve un AnalyzedNewsSource puntuado.
+export async function analyzeNewsSource(source: NewsSourceInput, symbol: string): Promise<AnalyzedNewsSource> {
+  const analyzer = createSentimentAnalyzerForRuntime();
+  const pseudoArticle: NewsArticle = {
+    id: source.id,
+    headline: source.title ?? "",
+    summary: source.text ?? "",
+    author: "",
+    source: source.provider,
+    url: source.url ?? "",
+    symbols: [symbol.toUpperCase()],
+    createdAt: source.publishedAt ?? new Date().toISOString()
+  };
+
+  const sentiment = await analyzer.analyzeNewsSentiment(symbol.toUpperCase(), [pseudoArticle]);
+  const verdict: NewsVerdict = sentiment.score > 0.3 ? "BUY" : sentiment.score < -0.3 ? "SELL" : "HOLD";
+
+  return {
+    id: source.id,
+    url: source.url,
+    title: source.title ?? "",
+    summary: source.text,
+    rationale: sentiment.reasoning,
+    verdict,
+    sentimentScore: sentiment.score,
+    confidence: sentiment.confidence,
+    credibilityScore: sentiment.degraded ? 0.3 : 0.7,
+    provider: source.provider,
+    publishedAt: source.publishedAt ?? new Date().toISOString()
+  };
 }

@@ -388,16 +388,36 @@ export const SuperChart: React.FC<SuperChartProps> = ({
         if (!response.ok) throw new Error("Failed to load signals");
 
         const data = await response.json();
-        const buy = getCSSVar("--color-buy") || "#00a87e";
+        const buy  = getCSSVar("--color-buy")  || "#00a87e";
         const sell = getCSSVar("--color-sell") || "#e23b4a";
 
+        // lightweight-charts createSeriesMarkers requires time in "yyyy-mm-dd" format.
+        // Convert any incoming timestamp (ISO string, unix-s, unix-ms) to that format.
+        const toDateStr = (ts: any): string => {
+          if (ts == null) return new Date().toISOString().slice(0, 10);
+          // Already yyyy-mm-dd
+          if (typeof ts === "string" && /^\d{4}-\d{2}-\d{2}$/.test(ts)) return ts;
+          // Try parsing as ISO / date string
+          const fromStr = Date.parse(String(ts));
+          if (!isNaN(fromStr)) {
+            return new Date(fromStr).toISOString().slice(0, 10);
+          }
+          // Numeric: unix-seconds or unix-ms
+          const n = Number(ts);
+          if (!isNaN(n)) {
+            const ms = n > 1e10 ? n : n * 1000; // ms if > year 2001
+            return new Date(ms).toISOString().slice(0, 10);
+          }
+          return new Date().toISOString().slice(0, 10);
+        };
+
         const marks: SignalMark[] = (data.signals || []).map((sig: any) => ({
-          time: sig.timestamp,
+          time:     toDateStr(sig.timestamp),
           position: sig.direction === "buy" ? "belowBar" : "aboveBar",
-          color: sig.direction === "buy" ? buy : sell,
-          shape: sig.direction === "buy" ? "arrowUp" : "arrowDown",
-          text: `${sig.confidence.toFixed(2)}`,
-          signal: sig,
+          color:    sig.direction === "buy" ? buy : sell,
+          shape:    sig.direction === "buy" ? "arrowUp" : "arrowDown",
+          text:     sig.confidence != null ? `${Number(sig.confidence).toFixed(2)}` : "",
+          signal:   sig,
         }));
 
         setSignals(marks);
@@ -413,14 +433,18 @@ export const SuperChart: React.FC<SuperChartProps> = ({
 
   // ── Highlight selected signal ─────────────────────────────────────────────
   useEffect(() => {
-    if (!selectedSignal || !candleSeriesRef.current) return;
+    if (!candleSeriesRef.current || signals.length === 0) return;
 
     const highlighted = signals.map(m =>
       m.signal?.id === selectedSignal?.id
         ? { ...m, color: getCSSVar("--color-warning") || "#ec7e00", shape: "square" as const }
         : m,
     );
-    createSeriesMarkers(candleSeriesRef.current as any, highlighted as any);
+    try {
+      createSeriesMarkers(candleSeriesRef.current as any, highlighted as any);
+    } catch {
+      // markers can fail if the chart was destroyed between renders
+    }
   }, [selectedSignal, signals]);
 
   // ── Error state ───────────────────────────────────────────────────────────
@@ -492,7 +516,7 @@ export const SuperChart: React.FC<SuperChartProps> = ({
           );
         })}
       </div>
- 
+
       {/* ── Technical Analysis Panel ───────────────────────────────────────── */}
       <div
         style={{
@@ -519,7 +543,7 @@ export const SuperChart: React.FC<SuperChartProps> = ({
                 {techData ? `${techData.resistances?.length ?? 0}R / ${techData.supports?.length ?? 0}S` : "0R / 0S"}
               </span>
             </div>
-            
+
             <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
               <span style={{ color: "var(--color-text-muted)" }}>Ventana</span>
               <div style={{ display: "flex", gap: "4px" }}>
