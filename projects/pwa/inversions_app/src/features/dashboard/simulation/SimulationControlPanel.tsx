@@ -23,6 +23,7 @@ import {
   type OptionStrategyAnalysis,
 } from "./OptionStrategyParamsModal";
 import { WheelParamsModal, type WheelModalParams } from "./WheelParamsModal";
+import { SpreadParamsModal, type SpreadModalParams } from "./SpreadParamsModal";
 import { ComplexStrategyParamsModal, type ComplexFormState } from "./ComplexStrategyParamsModal";
 import { executeStrategy } from "../../../services/strategies/strategyApi";
 import type { FromChainResponse } from "../../../services/strategies/strategyApi";
@@ -461,10 +462,12 @@ function ChipButton({
 // ─── Constants ─────────────────────────────────────────────────────────────────
 const TERM_STRATEGIES = new Set(["CALENDAR_SPREAD", "DIAGONAL_SPREAD"]);
 const CORE_OPTION_STRATEGIES = new Set<string>(["LONG_CALL", "LONG_PUT", "SHORT_CALL", "SHORT_PUT"]);
+const SPREAD_STRATEGIES = new Set(["BULL_CALL_SPREAD", "BEAR_PUT_SPREAD", "BULL_PUT_SPREAD", "BEAR_CALL_SPREAD"]);
 const COMPLEX_STRATEGIES = new Set(["IRON_CONDOR", "IRON_BUTTERFLY", "BUTTERFLY_SPREAD", "CONDOR"]);
 const COVERAGE_STRATEGIES = new Set(["PROTECTIVE_PUT", "MARRIED_PUT", "COLLAR_PUT", "COVERED_STRADDLE"]);
 function isTermStrategy(e: string)     { return TERM_STRATEGIES.has(e); }
 function isCoverageStrategy(e: string) { return COVERAGE_STRATEGIES.has(e); }
+function isSpreadStrategy(e: string)   { return SPREAD_STRATEGIES.has(e); }
 function isCoreOptionStrategy(e: string): e is CoreOptionStrategy { return CORE_OPTION_STRATEGIES.has(e); }
 function isWheelStrategy(e: string)    { return e === "WHEEL"; }
 function isComplexStrategy(e: string)  { return COMPLEX_STRATEGIES.has(e); }
@@ -487,6 +490,16 @@ const DEFAULT_COVERAGE_PARAMS: CoverageModalParams = {
   currentPrice: 0,
   shares: 100,
   riskTolerancePct: 0.05,
+};
+
+
+const DEFAULT_SPREAD_PARAMS: SpreadModalParams = {
+  currentPrice: 0,
+  longStrike: 0,
+  longPremium: 0,
+  shortStrike: 0,
+  shortPremium: 0,
+  contracts: 1,
 };
 
 const DEFAULT_WHEEL_PARAMS: WheelModalParams = {
@@ -515,12 +528,22 @@ const PRESET_OPTIONS: SelectOption[]    = PRESETS.map((p) => ({ value: p, label:
 const TIMEFRAME_OPTIONS: SelectOption[] = TIMEFRAMES.map((t) => ({ value: t, label: t }));
 const OPTION_STRATEGY_LABELS = new Map(OPTION_STRATEGY_OPTIONS.map((strategy) => [strategy.value, strategy.label]));
 const EMPTY_STRATEGY_OPTION: SelectOption = { value: "", label: "Seleccionar estrategia…" };
+const SPREAD_STRATEGY_OPTIONS: SelectOption[] = [
+  { value: "BULL_CALL_SPREAD", label: "Debit Spread · Bull Call" },
+  { value: "BEAR_PUT_SPREAD", label: "Debit Spread · Bear Put" },
+  { value: "BULL_PUT_SPREAD", label: "Credit Spread · Bull Put" },
+  { value: "BEAR_CALL_SPREAD", label: "Credit Spread · Bear Call" },
+];
+
 const STRATEGY_OPTIONS: SelectOption[] = [
   EMPTY_STRATEGY_OPTION,
-  ...CANONICAL_ESTRATEGIAS.map((strategy) => ({
-    value: strategy,
-    label: OPTION_STRATEGY_LABELS.get(strategy as CoreOptionStrategy) ?? strategy.replace(/_/g, " "),
-  })),
+  ...CANONICAL_ESTRATEGIAS
+    .filter((strategy) => !SPREAD_STRATEGIES.has(strategy))
+    .map((strategy) => ({
+      value: strategy,
+      label: OPTION_STRATEGY_LABELS.get(strategy as CoreOptionStrategy) ?? strategy.replace(/_/g, " "),
+    })),
+  ...SPREAD_STRATEGY_OPTIONS,
 ];
 
 function isoToday(): string       { return new Date().toISOString().slice(0, 10); }
@@ -560,6 +583,7 @@ interface Props {
   onCoverageParamsConfirmed?: (params: CoverageModalParams, kind: string) => void;
   onOptionStrategyCalculated?: (analysis: OptionStrategyAnalysis) => void;
   onWheelParamsConfirmed?: (params: WheelModalParams) => void;
+  onSpreadParamsConfirmed?: (params: SpreadModalParams, kind: string) => void;
   onTermResult?: (data: any) => void;
   onComplexResult?: (result: FromChainResponse, strategy: string, timeframe?: string) => void;
 }
@@ -573,6 +597,7 @@ export function SimulationControlPanel({
   onCoverageParamsConfirmed,
   onOptionStrategyCalculated,
   onWheelParamsConfirmed,
+  onSpreadParamsConfirmed,
   onTermResult,
   onComplexResult,
 }: Props) {
@@ -599,7 +624,9 @@ export function SimulationControlPanel({
   const [optionParamsModalOpen, setOptionParamsModalOpen] = useState(false);
   const [optionParamsStrategy, setOptionParamsStrategy] = useState<CoreOptionStrategy>("LONG_CALL");
   const [wheelModalOpen, setWheelModalOpen] = useState(false);
+  const [spreadModalOpen, setSpreadModalOpen] = useState(false);
   const [complexModalOpen, setComplexModalOpen] = useState(false);
+  const [spreadParams, setSpreadParams] = useState<SpreadModalParams>(DEFAULT_SPREAD_PARAMS);
   const [complexParams, setComplexParams] = useState<ComplexFormState | null>(null);
   const [wheelParams, setWheelParams] = useState<WheelModalParams>({
     ...DEFAULT_WHEEL_PARAMS,
@@ -619,6 +646,16 @@ export function SimulationControlPanel({
       })
       .catch(() => { /* user can enter manually */ });
   }, [coverageModalOpen, ticket, coverageParams.currentPrice]);
+
+  useEffect(() => {
+    if (!spreadModalOpen || spreadParams.currentPrice > 0) return;
+    getMarketQuotes([ticket])
+      .then((data) => {
+        const q = data.quotes.find((qt) => qt.symbol === ticket.toUpperCase());
+        if (q && q.price > 0) setSpreadParams((prev) => ({ ...prev, currentPrice: q.price }));
+      })
+      .catch(() => { /* user can enter manually */ });
+  }, [spreadModalOpen, ticket, spreadParams.currentPrice]);
 
   useEffect(() => {
     if (!wheelModalOpen || wheelParams.csp.currentPrice > 0) return;
@@ -671,6 +708,8 @@ export function SimulationControlPanel({
       setCoverageModalOpen(true);
     } else if (isWheelStrategy(e)) {
       setWheelModalOpen(true);
+    } else if (isSpreadStrategy(e)) {
+      setSpreadModalOpen(true);
     } else if (isComplexStrategy(e)) {
       setComplexModalOpen(true);
     }
@@ -694,6 +733,7 @@ export function SimulationControlPanel({
     setFechaHistorica("");
     setCoverageParams(DEFAULT_COVERAGE_PARAMS);
     setTermParams(DEFAULT_TERM_PARAMS);
+    setSpreadParams(DEFAULT_SPREAD_PARAMS);
     setError(null);
   };
 
@@ -1089,6 +1129,15 @@ export function SimulationControlPanel({
         onChange={setWheelParams}
         onClose={() => setWheelModalOpen(false)}
         onConfirm={(params) => onWheelParamsConfirmed?.(params)}
+      />
+      <SpreadParamsModal
+        open={spreadModalOpen}
+        estrategia={estrategia}
+        ticker={ticket}
+        params={spreadParams}
+        onChange={setSpreadParams}
+        onClose={() => setSpreadModalOpen(false)}
+        onConfirm={(params) => onSpreadParamsConfirmed?.(params, estrategia)}
       />
       <ComplexStrategyParamsModal
         open={complexModalOpen}

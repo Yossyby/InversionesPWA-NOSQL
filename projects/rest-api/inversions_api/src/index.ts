@@ -46,6 +46,8 @@ import { optionExpirationsRouter } from "./routes/options/expirations";
 import { supabaseClient } from "./database/supabase/client";
 import { calendarSpreadRouter } from "./routes/strategies/term/calendarSpread";
 import { diagonalSpreadRouter } from "./routes/strategies/term/diagonalSpread";
+import { createRelevantNewsRouter } from "./routes/news/relevant";
+import { newsRouter } from "./routes/news";
 
 // ── TEAM-08: Complex Strategy Routes ──
 import { alpacaExecutionRouter } from "./routes/strategies/complex/alpacaExecutionRouter";
@@ -116,6 +118,10 @@ app.use("/api/coverage", coverageCompareRouter);
 app.use("/api/coverage", coverageSimulateRouter);
 app.use("/api/options", indicatorsRateLimit, optionChainRouter);
 app.use("/api/options", indicatorsRateLimit, optionExpirationsRouter);
+
+// ── Team-06 routes: Noticias multi-API ───────────────────────────────
+app.use("/api/news", createRelevantNewsRouter(supabaseClient));
+app.use("/api/news", newsRouter);
 
 // ── Team-03 routes ──────────────────────────────────────────────────
 app.use("/api/team-03/fundamental", createFundamentalAnalyzeRouter(supabaseClient));
