@@ -32,6 +32,7 @@ import { getInstitutionalAnalysis } from "../../services/institutional/instituti
 import type { FundamentalAnalysisResponse } from "../../services/fundamental/fundamentalApi";
 import { formatCurrency } from "../../utils/format";
 import { Tooltip } from "../../components/ui/Tooltip";
+import { getAuthHeaders } from "../../services/signals/signalApi";
 
 // FIC: US-5 — compact buy/sell/hold counter chip shown above the confluence table. (EN)
 // FIC: US-5 — chip compacto de conteo compra/venta/hold mostrado sobre la tabla. (ES)
@@ -76,12 +77,25 @@ export function MainDashboard() {
     expiration?: string; underlyingPrice?: number; estimatedRiskFreeRate?: number;
   } | null>(null);
   const [activeChartTab, setActiveChartTab] = useState<"chart" | "chain">("chart");
+  const [watchlistSymbols, setWatchlistSymbols] = useState<string[]>([]);
 
   const { selectedInstrument, selectedStrike, runtimeMode, operationalMode, setSelectedStrike } = useSignalStore();
-  const { setAnalysisCategory } = useAppShellStore();
+  const { setAnalysisCategory, analysisCategory } = useAppShellStore();
   const { results: institutionalResults, loading: institutionalLoading, errors: institutionalErrors } = useInstitutionalStore();
 
   const selectedSymbol = selectedInstrument?.symbol ?? "SPY";
+
+  // Carga los símbolos de la watchlist cuando el usuario activa "Noticias 2"
+  useEffect(() => {
+    if (analysisCategory !== "news2") return;
+    fetch("/api/watchlist", { headers: getAuthHeaders() })
+      .then((r) => r.json())
+      .then((data) => {
+        const symbols: string[] = (data.items ?? []).map((i: any) => i.symbol).filter(Boolean);
+        if (symbols.length > 0) setWatchlistSymbols(symbols);
+      })
+      .catch(() => {});
+  }, [analysisCategory]);
 
   // FIC: Clear simulation results and institutional flag when the user selects a new ticker. (EN)
   // FIC: Limpiar resultados de simulación y flag institucional cuando el usuario selecciona un nuevo ticker. (ES)
@@ -617,7 +631,9 @@ export function MainDashboard() {
         autoRunKey={fundamentalAutoRunKey}
         onAnalysisComplete={setFundamentalAnalysis}
       />
-      <NewsSourcesAnalyzer />
+      {analysisCategory === "news2" && (
+        <NewsSourcesAnalyzer watchlistSymbols={watchlistSymbols.length > 0 ? watchlistSymbols : undefined} />
+      )}
     </div>
   );
 

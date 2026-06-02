@@ -53,10 +53,16 @@ const DEFAULT_SOURCES: NewsSource[] = [
   },
 ];
 
-export const NewsSourcesAnalyzer: React.FC = () => {
+interface NewsSourcesAnalyzerProps {
+  /** Símbolos de la watchlist para auto-rellenar el selector de compañía. */
+  watchlistSymbols?: string[];
+}
+
+export const NewsSourcesAnalyzer: React.FC<NewsSourcesAnalyzerProps> = ({ watchlistSymbols }) => {
   // FIC: Estado de fuentes agregadas
   const [sources, setSources] = useState<NewsSource[]>(DEFAULT_SOURCES);
-  const [selectedCompany, setSelectedCompany] = useState<string>('');
+  // Pre-rellena con el primer símbolo de la watchlist si está disponible.
+  const [selectedCompany, setSelectedCompany] = useState<string>(watchlistSymbols?.[0] ?? '');
   const [isExpanded, setIsExpanded] = useState<boolean>(true);
 
   // FIC: Estado de análisis
@@ -222,20 +228,35 @@ export const NewsSourcesAnalyzer: React.FC = () => {
           {/* Input para agregar URLs */}
           <SourceInput onAddSource={handleAddSource} loading={analysis.loading} />
 
-          {/* Selector de compañía */}
+          {/* Selector de compañía — watchlist o texto libre */}
           <div className="nsa-company-section">
             <label htmlFor="company-input" className="nsa-label">
               Compañía a Analizar
             </label>
-            <input
-              id="company-input"
-              type="text"
-              placeholder="Ej: Apple, Microsoft, Tesla..."
-              value={selectedCompany}
-              onChange={(e) => handleCompanyChange(e.target.value)}
-              disabled={analysis.loading}
-              className="nsa-company-input"
-            />
+            {watchlistSymbols && watchlistSymbols.length > 0 ? (
+              <select
+                id="company-input"
+                value={selectedCompany}
+                onChange={(e) => handleCompanyChange(e.target.value)}
+                disabled={analysis.loading}
+                className="nsa-company-input"
+                style={{ cursor: 'pointer' }}
+              >
+                {watchlistSymbols.map((sym) => (
+                  <option key={sym} value={sym}>{sym}</option>
+                ))}
+              </select>
+            ) : (
+              <input
+                id="company-input"
+                type="text"
+                placeholder="Ej: Apple, Microsoft, Tesla..."
+                value={selectedCompany}
+                onChange={(e) => handleCompanyChange(e.target.value)}
+                disabled={analysis.loading}
+                className="nsa-company-input"
+              />
+            )}
           </div>
 
           {/* Lista expandible de fuentes */}
