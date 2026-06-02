@@ -331,7 +331,7 @@ export function SimulatorStrategySection({ ticker, activeStrategy, coverageReque
         const payoffCurve = profile?.payoff_curve ?? [];
         const griegas = profile?.griegas;
         const escenarios = simulation?.escenarios;
-        const bePoints: number[] = Array.isArray(profile?.break_even_points) ? profile.break_even_points : [];
+        const bePoints: number[] = Array.isArray(profile?.break_even_points) ? profile.break_even_points.filter((bp: number | null): bp is number => bp != null) : [];
 
         // Calculate DTE
         let dte = "—";
@@ -436,9 +436,9 @@ export function SimulatorStrategySection({ ticker, activeStrategy, coverageReque
                             {p.posicion}
                           </span>
                         </td>
-                        <td style={{ padding: "var(--space-xs)", borderBottom: "1px solid var(--color-border-subtle)", fontWeight: 600 }}>${p.strike}</td>
+                        <td style={{ padding: "var(--space-xs)", borderBottom: "1px solid var(--color-border-subtle)", fontWeight: 600 }}>{p.strike != null ? `$${p.strike}` : "—"}</td>
                         <td style={{ padding: "var(--space-xs)", borderBottom: "1px solid var(--color-border-subtle)" }}>{p.tipo}</td>
-                        <td style={{ padding: "var(--space-xs)", borderBottom: "1px solid var(--color-border-subtle)", fontWeight: 700, color: "var(--color-accent)" }}>${p.prima.toFixed(2)}</td>
+                        <td style={{ padding: "var(--space-xs)", borderBottom: "1px solid var(--color-border-subtle)", fontWeight: 700, color: "var(--color-accent)" }}>${fmt(p.prima)}</td>
                       </tr>
                     ))}
                   </tbody>
