@@ -691,13 +691,14 @@ export function SimulationControlPanel({
     onStrategyChange?.("IRON_CONDOR");
     setTolerancia("MEDIO");
     setCoresOn(defaultCoresOn());
-    // FIC: Reset shared indicator toggles to OFF (keeps chart "arriba" in sync). (EN)
-    // FIC: Restablece los toggles compartidos de indicadores a OFF (mantiene sincronía con el gráfico "arriba"). (ES)
     ALL_SUBCORES.forEach((s) => setIndicator(s, false));
     setFechaHistorica("");
     setCoverageParams(DEFAULT_COVERAGE_PARAMS);
     setTermParams(DEFAULT_TERM_PARAMS);
     setError(null);
+    // Oculta el card de Noticias 2 al limpiar el panel
+    setNoticias2On(false);
+    onNoticias2Change?.(false);
   };
 
   const run = async () => {
