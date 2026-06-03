@@ -97,7 +97,37 @@ function toIsoDate(daysAgo = 0): string {
 
 function normalizeDate(value?: string): string | undefined {
   const text = value?.trim();
-  return text ? text.slice(0, 10) : undefined;
+  if (!text) return undefined;
+  const date = new Date(text.length <= 10 ? `${text.slice(0, 10)}T00:00:00.000Z` : text);
+  return Number.isNaN(date.getTime()) ? undefined : date.toISOString().slice(0, 10);
+}
+
+function addDaysIso(value: string | undefined, days: number): string | undefined {
+  if (!value) return undefined;
+  const date = new Date(`${value}T00:00:00.000Z`);
+  if (Number.isNaN(date.getTime())) return undefined;
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
+function buildAnalysisWindow(from?: string, to?: string): { requestedFrom?: string; requestedTo?: string; analysisFrom?: string; analysisTo?: string } {
+  const requestedFrom = normalizeDate(from);
+  const requestedTo = normalizeDate(to);
+
+  return {
+    requestedFrom,
+    requestedTo,
+    // TEAM-06: para una estrategia del 12/06 al 15/07 se analiza una ventana
+    // informativa ampliada: 7 dias antes y 7 dias despues. Esto evita perder
+    // noticias que anticipan el movimiento o que confirman el evento al cierre.
+    analysisFrom: addDaysIso(requestedFrom, -7),
+    analysisTo: addDaysIso(requestedTo, 7)
+  };
+}
+
+function formatAlphaVantageDate(value?: string, endOfDay = false): string | undefined {
+  if (!value) return undefined;
+  return value.replace(/-/g, "") + (endOfDay ? "T2359" : "T0000");
 }
 
 function isWithinDateRange(publishedAt: string | undefined, from?: string, to?: string): boolean {
@@ -225,11 +255,11 @@ async function fetchYahooFinance(symbol: string, limit: number, timeoutMs: numbe
   }));
 }
 
-async function fetchFinnhub(symbol: string, limit: number, timeoutMs: number): Promise<NewsSourceInput[]> {
+async function fetchFinnhub(symbol: string, limit: number, timeoutMs: number, from?: string, to?: string): Promise<NewsSourceInput[]> {
   const token = getEnv("FINNHUB_API_KEY");
   if (!token) return [];
 
-  const params = new URLSearchParams({ symbol, from: toIsoDate(30), to: toIsoDate(0), token });
+  const params = new URLSearchParams({ symbol, from: from ?? toIsoDate(30), to: to ?? toIsoDate(0), token });
   const payload = await fetchJson<Array<{ id?: number; headline?: string; summary?: string; url?: string; datetime?: number; source?: string }>>(
     `https://finnhub.io/api/v1/company-news?${params.toString()}`,
     timeoutMs
@@ -246,12 +276,14 @@ async function fetchFinnhub(symbol: string, limit: number, timeoutMs: number): P
   }));
 }
 
-async function fetchNewsApi(symbol: string, limit: number, timeoutMs: number): Promise<NewsSourceInput[]> {
+async function fetchNewsApi(symbol: string, limit: number, timeoutMs: number, from?: string, to?: string): Promise<NewsSourceInput[]> {
   const apiKey = getEnv("NEWSAPI_API_KEY");
   if (!apiKey) return [];
 
   const company = COMPANY_NAMES[symbol] ?? symbol;
   const params = new URLSearchParams({ q: `(${symbol} OR "${company}") AND (stock OR shares OR earnings OR market)`, language: "en", sortBy: "publishedAt", pageSize: String(Math.min(100, limit)), apiKey });
+  if (from) params.set("from", from);
+  if (to) params.set("to", to);
   const payload = await fetchJson<{ articles?: Array<{ title?: string; description?: string; content?: string; url?: string; publishedAt?: string }> }>(
     `https://newsapi.org/v2/everything?${params.toString()}`,
     timeoutMs
@@ -268,11 +300,15 @@ async function fetchNewsApi(symbol: string, limit: number, timeoutMs: number): P
   }));
 }
 
-async function fetchAlphaVantage(symbol: string, limit: number, timeoutMs: number): Promise<NewsSourceInput[]> {
+async function fetchAlphaVantage(symbol: string, limit: number, timeoutMs: number, from?: string, to?: string): Promise<NewsSourceInput[]> {
   const apiKey = getEnv("ALPHA_VANTAGE_API_KEY");
   if (!apiKey) return [];
 
   const params = new URLSearchParams({ function: "NEWS_SENTIMENT", tickers: symbol, limit: String(Math.min(50, limit)), apikey: apiKey });
+  const timeFrom = formatAlphaVantageDate(from);
+  const timeTo = formatAlphaVantageDate(to, true);
+  if (timeFrom) params.set("time_from", timeFrom);
+  if (timeTo) params.set("time_to", timeTo);
   const payload = await fetchJson<{ feed?: Array<{ title?: string; summary?: string; url?: string; time_published?: string }> }>(
     `https://www.alphavantage.co/query?${params.toString()}`,
     timeoutMs
@@ -291,11 +327,13 @@ async function fetchAlphaVantage(symbol: string, limit: number, timeoutMs: numbe
   }));
 }
 
-async function fetchPolygon(symbol: string, limit: number, timeoutMs: number): Promise<NewsSourceInput[]> {
+async function fetchPolygon(symbol: string, limit: number, timeoutMs: number, from?: string, to?: string): Promise<NewsSourceInput[]> {
   const apiKey = getEnv("POLYGON_API_KEY");
   if (!apiKey) return [];
 
   const params = new URLSearchParams({ ticker: symbol, limit: String(Math.min(100, limit)), order: "desc", sort: "published_utc", apiKey });
+  if (from) params.set("published_utc.gte", `${from}T00:00:00Z`);
+  if (to) params.set("published_utc.lte", `${to}T23:59:59Z`);
   const payload = await fetchJson<{ results?: Array<{ id?: string; title?: string; description?: string; article_url?: string; published_utc?: string }> }>(
     `https://api.polygon.io/v2/reference/news?${params.toString()}`,
     timeoutMs
@@ -330,8 +368,7 @@ function sortByDate(items: NewsSourceInput[]): NewsSourceInput[] {
 
 export async function fetchNewsData(input: string | NewsQueryParams, defaultLimit = 8): Promise<NewsDataResponse> {
   const params = normalizeInput(input, defaultLimit);
-  const from = normalizeDate(params.from);
-  const to = normalizeDate(params.to);
+  const { requestedFrom, requestedTo, analysisFrom, analysisTo } = buildAnalysisWindow(params.from, params.to);
   const timeoutMs = Number(process.env.NEWS_FETCH_TIMEOUT_MS ?? 5500);
   const configuredProviders = [
     getEnv("FINNHUB_API_KEY") ? "finnhub" : "no-finnhub",
@@ -339,31 +376,31 @@ export async function fetchNewsData(input: string | NewsQueryParams, defaultLimi
     getEnv("POLYGON_API_KEY") ? "polygon" : "no-polygon",
     getEnv("ALPHA_VANTAGE_API_KEY") ? "alpha" : "no-alpha"
   ].join(":");
-  const cacheKey = `${params.symbol}:${params.limit}:${from ?? "all"}:${to ?? "all"}:real-only:${configuredProviders}`;
+  const cacheKey = `${params.symbol}:${params.limit}:${requestedFrom ?? "all"}:${requestedTo ?? "all"}:window:${analysisFrom ?? "all"}:${analysisTo ?? "all"}:real-only:${configuredProviders}`;
   const cached = cache.get(cacheKey);
   if (cached && cached.expiresAt > Date.now()) {
     return { ...cached.data, fromCache: true };
   }
 
-  const perProviderLimit = Math.max(params.limit, 8);
+  const perProviderLimit = Math.max(params.limit * 3, 20);
   const results = await Promise.all([
     runProvider("yahooFinance", true, () => fetchYahooFinance(params.symbol, perProviderLimit, timeoutMs)),
-    runProvider("finnhub", Boolean(getEnv("FINNHUB_API_KEY")), () => fetchFinnhub(params.symbol, perProviderLimit, timeoutMs)),
-    runProvider("newsapi", Boolean(getEnv("NEWSAPI_API_KEY")), () => fetchNewsApi(params.symbol, perProviderLimit, timeoutMs)),
-    runProvider("polygon", Boolean(getEnv("POLYGON_API_KEY")), () => fetchPolygon(params.symbol, perProviderLimit, timeoutMs)),
-    runProvider("alphaVantage", Boolean(getEnv("ALPHA_VANTAGE_API_KEY")), () => fetchAlphaVantage(params.symbol, perProviderLimit, timeoutMs))
+    runProvider("finnhub", Boolean(getEnv("FINNHUB_API_KEY")), () => fetchFinnhub(params.symbol, perProviderLimit, timeoutMs, analysisFrom, analysisTo)),
+    runProvider("newsapi", Boolean(getEnv("NEWSAPI_API_KEY")), () => fetchNewsApi(params.symbol, perProviderLimit, timeoutMs, analysisFrom, analysisTo)),
+    runProvider("polygon", Boolean(getEnv("POLYGON_API_KEY")), () => fetchPolygon(params.symbol, perProviderLimit, timeoutMs, analysisFrom, analysisTo)),
+    runProvider("alphaVantage", Boolean(getEnv("ALPHA_VANTAGE_API_KEY")), () => fetchAlphaVantage(params.symbol, perProviderLimit, timeoutMs, analysisFrom, analysisTo))
   ]);
 
   const resultsWithFiltering = results.map((result) => {
     const rawCount = result.sources.length;
-    const relevantCount = result.sources.filter((source) => isWithinDateRange(source.publishedAt, from, to) && isRelevantToSymbol(source, params.symbol)).length;
+    const relevantCount = result.sources.filter((source) => isWithinDateRange(source.publishedAt, analysisFrom, analysisTo) && isRelevantToSymbol(source, params.symbol)).length;
     return { ...result, rawCount, relevantCount };
   });
 
   const status = resultsWithFiltering.map(providerStatus);
   const remote = sortByDate(
     dedupe(resultsWithFiltering.flatMap((result) => result.sources))
-      .filter((source) => isWithinDateRange(source.publishedAt, from, to) && isRelevantToSymbol(source, params.symbol))
+      .filter((source) => isWithinDateRange(source.publishedAt, analysisFrom, analysisTo) && isRelevantToSymbol(source, params.symbol))
   ).slice(0, params.limit);
 
   const articles: AnalyzedNewsSource[] = await Promise.all(remote.map((source) => analyzeNewsSource(source, params.symbol)));

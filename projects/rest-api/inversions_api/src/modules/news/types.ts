@@ -67,10 +67,6 @@ export interface SourceAnalysisResult {
   timestamp: string;
 }
 
-// FIC: Alias used by the ultrafic news impact engine — maps 1:1 to NewsOutlook.
-export type NewsVerdict = "BUY" | "SELL" | "HOLD";
-
-// FIC: Supported news provider identifiers.
 export type NewsProviderId =
   | "manual"
   | "url"
@@ -81,18 +77,69 @@ export type NewsProviderId =
   | "polygon"
   | "tnmtAnalyzer";
 
-// FIC: Raw news item from any provider before sentiment analysis.
+export type NewsSentiment = "positive" | "neutral" | "negative";
+export type NewsVerdict = "BUY" | "HOLD" | "SELL";
+
 export interface NewsSourceInput {
-  id: string;
+  id?: string;
   title?: string;
-  text?: string;
   url?: string;
-  provider: NewsProviderId;
+  text?: string;
+  provider?: NewsProviderId | string;
   publishedAt?: string;
   symbol?: string;
 }
 
-// FIC: Per-provider health status included in NewsDataResponse.
+
+export interface NewsCanonicalObservation {
+  objetivo: string;
+  senal: string;
+  explicacion: string;
+  metricas: Record<string, number | string>;
+}
+
+export interface NewsCanonicalRow {
+  core: "A_NOTICIAS";
+  subCore?: string;
+  tipoSenal: "CALL" | "PUT" | "HOLD";
+  score: number;
+  peso: number;
+  observacion: NewsCanonicalObservation;
+  canonicalOutput: string;
+}
+
+export interface NewsCanonicalPayload {
+  version: "canonical-output-v1";
+  core: "A_NOTICIAS";
+  symbol: string;
+  generatedAt: string;
+  standard: string;
+  aggregate: NewsCanonicalRow;
+  rows: NewsCanonicalRow[];
+  output: string;
+  outputs: string[];
+}
+
+export interface AnalyzedNewsSource {
+  id: string;
+  title: string;
+  url?: string;
+  provider: string;
+  publishedAt: string;
+  summary: string;
+  rawText: string;
+  sentiment: NewsSentiment;
+  sentimentScore: number;
+  confidence: number;
+  credibilityScore: number;
+  affectedSymbols: string[];
+  keywords: string[];
+  verdict: NewsVerdict;
+  rationale: string;
+  canonicalRow?: NewsCanonicalRow;
+  canonicalOutput?: string;
+}
+
 export interface NewsProviderStatus {
   id: NewsProviderId;
   label: string;
@@ -104,7 +151,22 @@ export interface NewsProviderStatus {
   relevantCount?: number;
 }
 
-// FIC: Query parameters accepted by fetchNewsData.
+export interface NewsAnalysisAggregate {
+  symbol: string;
+  generatedAt: string;
+  totalSources: number;
+  sentiment: NewsSentiment;
+  sentimentScore: number;
+  confidence: number;
+  verdict: NewsVerdict;
+  buyCount: number;
+  holdCount: number;
+  sellCount: number;
+  sources: AnalyzedNewsSource[];
+  highlights: string[];
+  canonical: NewsCanonicalPayload;
+}
+
 export interface NewsQueryParams {
   symbol: string;
   limit?: number;
@@ -113,85 +175,54 @@ export interface NewsQueryParams {
   includeFallback?: boolean;
 }
 
-// FIC: Full response returned by fetchNewsData — articles + provider diagnostics.
 export interface NewsDataResponse {
   symbol: string;
   generatedAt: string;
   fromCache: boolean;
   articles: AnalyzedNewsSource[];
   providerStatus: NewsProviderStatus[];
-  realDataOnly: boolean;
+  realDataOnly: true;
 }
 
-// FIC: Individual analyzed news article produced by the news data service.
-export interface AnalyzedNewsSource {
-  id: string;
-  url?: string;
-  title: string;
-  summary?: string;
-  rationale?: string;
-  verdict: NewsVerdict;
-  sentimentScore: number;
-  confidence: number;
-  credibilityScore: number;
-  provider: string;
-  publishedAt: string;
-  /** Sentimiento en formato textual (usado por relevant.ts). */
-  sentiment?: NewsSentiment;
-  /** Salida canónica en texto (inyectada por attachNewsCanonicalToSource). */
-  canonicalOutput?: string;
-  /** Campo opcional inyectado por newsCanonicalOutput cuando ya existe una fila canónica pre-calculada.
-   *  Se tipifica como any para no generar dependencia circular con ConfluenceSignalRow. */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  canonicalRow?: any;
-}
 
-// ─── Tipos canónicos del módulo de noticias (usados por newsCanonicalOutput) ──
+export type NewsOptionRecommendation = "CALL" | "PUT" | "HOLD";
 
-/** Fila canónica de noticias con salida en formato canonical-output-v1. */
-export interface NewsCanonicalRow {
-  core?: string;
-  subCore?: string;
-  ticket?: string;
-  tipoSenal: "CALL" | "PUT" | "HOLD";
-  score: number;
-  peso: number;
-  canonicalOutput: string;
-  observacion: {
-    objetivo: string;
-    senal: string;
-    explicacion: string;
-    metricas: Record<string, string | number>;
-  };
-  [key: string]: unknown;
-}
-
-/** Payload canónico agregado devuelto por buildNewsCanonicalPayloadFrom*. */
-export interface NewsCanonicalPayload {
-  version: string;
-  core: string;
+export interface NewsRecommendationSummary {
   symbol: string;
-  generatedAt: string;
-  standard: string;
-  aggregate: unknown;
-  rows: NewsCanonicalRow[];
-  output: string;
-  outputs: string[];
+  recommendation: NewsOptionRecommendation;
+  verdict: NewsVerdict;
+  sentiment: NewsSentiment;
+  confidence: number;
+  score: number;
+  summary: string;
+  reasoning: string;
+  bullishCount: number;
+  bearishCount: number;
+  neutralCount: number;
+  keyDrivers: string[];
+  topBullish: string[];
+  topBearish: string[];
+  topNeutral: string[];
+  riskNote: string;
+  strategyHint: string;
 }
 
-/** Sentimiento en formato textual usado por routes/news/relevant. */
-export type NewsSentiment = "positive" | "negative" | "neutral";
-
-// FIC: Aggregate response returned by evaluateNewsImpact.
 export interface NewsImpactResponse {
   symbol: string;
   generatedAt: string;
   score: number;
-  sentiment: "positive" | "negative" | "neutral";
+  sentiment: NewsSentiment;
   verdict: NewsVerdict;
   confidence: number;
   articles: AnalyzedNewsSource[];
-  providerStatus?: unknown;
-  realDataOnly: boolean;
-  evidence: Array<{ sourceId: string; verdict: NewsVerdict; confidence: number; rationale?: string }>;
+  providerStatus: NewsProviderStatus[];
+  realDataOnly: true;
+  evidence: Array<{
+    sourceId: string;
+    verdict: NewsVerdict;
+    confidence: number;
+    rationale: string;
+  }>;
+  canonical: NewsCanonicalPayload;
+  recommendationSummary: NewsRecommendationSummary;
 }

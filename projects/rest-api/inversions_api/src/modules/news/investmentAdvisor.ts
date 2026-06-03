@@ -9,7 +9,7 @@ import {
   createSentimentAnalyzerForRuntime,
   type NewsSentimentAnalyzer
 } from "./sentimentService";
-import { NEWS_DISCLAIMER, type InvestmentVerdict, type NewsOutlook, type SentimentResult } from "./types";
+import { NEWS_DISCLAIMER, type InvestmentVerdict, type NewsOutlook, type SentimentResult, type NewsRecommendationSummary } from "./types";
 
 export interface InvestmentAdvisorDeps {
   adapter?: NewsAdapter;
@@ -45,6 +45,50 @@ export class InvestmentAdvisor {
       generatedAt: new Date().toISOString()
     };
   }
+}
+
+export function buildInvestmentAdvice(input: {
+  symbol: string;
+  verdict: NewsOutlook;
+  confidence: number;
+  score?: number;
+  articles?: Array<{ title?: string; confidence?: number }>;
+  recommendationSummary?: NewsRecommendationSummary;
+}): {
+  symbol: string;
+  verdict: NewsOutlook;
+  confidence: number;
+  action: string;
+  summary: string;
+  riskNote: string;
+  checklist: string[];
+} {
+  const recommendation = input.recommendationSummary?.recommendation;
+  const action = recommendation === "CALL"
+    ? "Sesgo CALL: considerar estrategia alcista con riesgo limitado"
+    : recommendation === "PUT"
+      ? "Sesgo PUT: considerar cobertura o estrategia bajista con riesgo limitado"
+      : "Sesgo HOLD: mantener neutralidad y esperar confirmación";
+  const summary = input.recommendationSummary?.summary
+    ?? `${input.symbol} presenta un veredicto ${input.verdict} con confianza ${(input.confidence * 100).toFixed(0)}%.`;
+  const riskNote = input.recommendationSummary?.riskNote
+    ?? (input.confidence < 0.5 ? "La confianza es moderada o baja; revisar noticias adicionales antes de actuar." : "La confianza es relativamente alta, pero sigue siendo un análisis explicativo.");
+  const checklist = [
+    input.recommendationSummary?.strategyHint ?? "Comparar la recomendación de noticias con la estrategia seleccionada",
+    "Verificar la noticia original y su fecha",
+    "Comparar con la tendencia técnica",
+    "Confirmar si el movimiento ya fue descontado por el mercado"
+  ];
+
+  return {
+    symbol: input.symbol,
+    verdict: input.verdict,
+    confidence: input.confidence,
+    action,
+    summary,
+    riskNote,
+    checklist
+  };
 }
 
 // FIC: Verdict mapping from the doc — low confidence holds, otherwise score-based.

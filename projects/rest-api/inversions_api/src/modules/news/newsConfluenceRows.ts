@@ -56,6 +56,28 @@ function publishedDate(article: AnalyzedNewsSource, fallback: Date): string {
   return Number.isFinite(date.getTime()) ? date.toISOString().slice(0, 10) : fallback.toISOString().slice(0, 10);
 }
 
+function compactNewsText(value: string | null | undefined, max = 1400): string {
+  const text = (value ?? "").replace(/\s+/g, " ").trim();
+  if (!text) return "Sin resumen disponible.";
+  return text.length > max ? `${text.slice(0, max - 1).trim()}…` : text;
+}
+
+function newsSummaryForConfluence(article: AnalyzedNewsSource, symbol: string): string {
+  const canonicalSummary = article.canonicalRow?.observacion.metricas?.RESUMEN_NOTICIA;
+  if (typeof canonicalSummary === "string" && canonicalSummary.trim()) return canonicalSummary.trim();
+
+  const title = compactNewsText(article.title, 220);
+  const summary = compactNewsText(article.summary || article.rawText, 900);
+  return [
+    `Titular: ${title}`,
+    `Resumen enviado al analizador: ${summary}`,
+    `Lectura para ${symbol}: proveedor=${article.provider}, veredicto=${article.verdict}, sentimiento=${article.sentiment}.`,
+    `Métricas de lectura: sentimiento=${article.sentimentScore}, confianza=${article.confidence}, credibilidad=${article.credibilityScore}.`,
+    `Fecha y evidencia: ${article.publishedAt}; fuente=${article.url ?? article.id}.`
+  ].join("\n");
+}
+
+
 function shortProvider(provider: string): string {
   const clean = provider.replace(/[^a-z0-9]/gi, "").toLowerCase();
   if (clean.includes("yahoo")) return "YAHOO";
@@ -90,13 +112,25 @@ function buildRowFromArticle(
   const score = canonicalRow?.score ?? Number(Math.max(-1, Math.min(1, direction * article.confidence * article.credibilityScore)).toFixed(3));
   const peso = canonicalRow?.peso ?? Number(Math.max(0, Math.min(1, article.confidence * article.credibilityScore)).toFixed(3));
   const evidenceRef = article.url ?? `news:${article.id}`;
-  const metricas = canonicalRow?.observacion.metricas ?? {
+  const resumenNoticia = newsSummaryForConfluence(article, input.ticket);
+  const textoAnalizadoIa = `${article.title || ""} ${article.rawText || article.summary || ""}`.replace(/\s+/g, " ").trim();
+  const baseMetricas = canonicalRow?.observacion.metricas ?? {
     SENTIMIENTO: score,
     CONFIANZA: article.confidence,
     CREDIBILIDAD: article.credibilityScore,
     PESO_CALCULADO: peso,
     CALCULO_PESO: `peso=${article.confidence.toFixed(3)}*${article.credibilityScore.toFixed(3)}=${peso.toFixed(3)}`,
     PROVEEDOR: article.provider
+  };
+  const metricas = {
+    ...baseMetricas,
+    TICKER: input.ticket,
+    TITULAR: article.title,
+    RESUMEN_NOTICIA: resumenNoticia,
+    TEXTO_ANALIZADO_IA: textoAnalizadoIa,
+    VEREDICTO: article.verdict,
+    FECHA_NOTICIA: article.publishedAt,
+    FUENTE_URL: evidenceRef
   };
 
   return {
@@ -119,8 +153,12 @@ function buildRowFromArticle(
     delta_vs_anterior: deltaForArticle(input.previousRows, article, tipoSenal),
     observacion: {
       objetivo: canonicalRow?.observacion.objetivo ?? article.title,
-      senal: canonicalRow?.observacion.senal ?? (article.summary || `${article.verdict} convertido a ${tipoSenal} con confianza ${(article.confidence * 100).toFixed(0)}%.`),
-      explicacion: canonicalRow?.observacion.explicacion ?? (article.rationale || `${article.verdict} convertido a ${tipoSenal} con confianza ${(article.confidence * 100).toFixed(0)}%.`),
+      senal: `Resumen de noticia para ${input.ticket}: ${compactNewsText(article.summary || article.rawText, 360)} | Señal=${article.verdict}/${article.sentiment}`,
+      explicacion: `Resumen usado para calcular BUY/SELL/HOLD:\n${resumenNoticia}\n\nRazonamiento del motor: ${
+        canonicalRow?.observacion.explicacion ??
+        article.rationale ??
+        `${article.verdict} convertido a ${tipoSenal} con confianza ${(article.confidence * 100).toFixed(0)}%.`
+      }`,
       metricas
     },
     algorithm_version: ALGORITHM_VERSION,
@@ -140,20 +178,9 @@ export async function buildNewsConfluenceRows(input: BuildNewsRowsInput): Promis
     includeFallback: false
   });
 
-  // Las APIs de noticias normalmente entregan informacion reciente, mientras que la
-  // simulacion usa el rango de estrategia (por ejemplo hoy -> +30 dias). Si ese
-  // rango deja fuera las noticias ya recibidas, reintentamos sin rango para que
-  // A_NOTICIAS no vuelva al stub degradado cuando si hay evidencia real.
-  if (aggregate.articles.length === 0 && (input.from || input.to)) {
-    const relaxedAggregate = await evaluateNewsImpact({
-      symbol: input.ticket,
-      limit,
-      includeFallback: false
-    });
-    if (relaxedAggregate.articles.length > 0) {
-      aggregate = relaxedAggregate;
-    }
-  }
+  // TEAM-06: no se relaja el rango a "todas las noticias". La ventana temporal
+  // se respeta desde newsDataService, que ya amplía el rango de estrategia con
+  // 7 días antes y 7 días después para capturar eventos relevantes cercanos.
 
   return aggregate.articles.map((article, index) => buildRowFromArticle(input, article, index, computedAt, aggregate));
 }
