@@ -431,8 +431,8 @@ export const NewsSourcesAnalyzer: React.FC<NewsSourcesAnalyzerProps> = ({
                   </div>
                   <div style={{ padding: '10px 18px', borderTop: `1px solid ${vm.border}33`, background: 'var(--color-surface-raised)', display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 10 }}>
                     {[
-                      { label: 'Score',     value: (r.score >= 0 ? '+' : '') + r.score.toFixed(2),         color: vm.bg },
-                      { label: 'Confianza', value: `${(r.confidence * 100).toFixed(0)}%`,                  color: 'var(--color-text)' },
+                      { label: 'Score',     value: ((r.score ?? 0) >= 0 ? '+' : '') + (r.score ?? 0).toFixed(2),         color: vm.bg },
+                      { label: 'Confianza', value: `${((r.confidence ?? 0) * 100).toFixed(0)}%`,                  color: 'var(--color-text)' },
                       { label: 'Artículos', value: `${r.articles?.length ?? 0}`,                           color: 'var(--color-accent)' },
                     ].map(m => (
                       <div key={m.label} style={{ textAlign: 'center' }}>
@@ -445,7 +445,7 @@ export const NewsSourcesAnalyzer: React.FC<NewsSourcesAnalyzerProps> = ({
                     <div style={{ fontSize: '0.63rem', color: 'var(--color-text-muted)', marginBottom: 4, display: 'flex', justifyContent: 'space-between' }}>
                       <span>Bajista</span><span>Neutral</span><span>Alcista</span>
                     </div>
-                    <ScoreBar value={r.score} />
+                    <ScoreBar value={r.score ?? 0} />
                   </div>
                 </div>
 
@@ -465,7 +465,8 @@ export const NewsSourcesAnalyzer: React.FC<NewsSourcesAnalyzerProps> = ({
                     ) : (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 8, overflowY: 'auto', maxHeight: 280 }}>
                         {r.articles.slice(0, 4).map((art, i) => {
-                          const artColor = art.score > 0.1 ? '#00c853' : art.score < -0.1 ? '#ff1744' : '#ffa000';
+                          const artScore  = art.score      != null ? Number(art.score)      : 0;
+                          const artColor  = artScore > 0.1 ? '#00c853' : artScore < -0.1 ? '#ff1744' : '#ffa000';
                           return (
                             <div key={i} style={{
                               padding: '8px 10px', borderRadius: 8,
@@ -485,7 +486,7 @@ export const NewsSourcesAnalyzer: React.FC<NewsSourcesAnalyzerProps> = ({
                                   {art.publishedAt ? new Date(art.publishedAt).toLocaleDateString('es-MX', { month: 'short', day: 'numeric' }) : '—'}
                                 </span>
                                 <span style={{ marginLeft: 'auto', fontSize: '0.62rem', fontWeight: 700, color: artColor }}>
-                                  {art.score >= 0 ? '+' : ''}{art.score.toFixed(2)}
+                                  {artScore >= 0 ? '+' : ''}{artScore.toFixed(2)}
                                 </span>
                               </div>
                               {/* Snippet */}
