@@ -150,24 +150,22 @@ router.post('/analyze-sources', async (req: Request, res: Response) => {
       { headline: `${symbol} technical analysis: key support levels hold as volume trends positive`, snippet: `${symbol} has maintained critical support levels with increasing volume suggesting accumulation phase.`, source: 'Market Context', url: '' },
     ];
 
-    // ── 1. Obtener artículos de Yahoo RSS + Finnhub en paralelo ───────────────
+    // ── 1. Artículos de contexto como BASE garantizada (siempre presentes) ───
+    const contextBase = (TICKER_CONTEXT[symbol] ?? genericFallback)
+      .map(a => ({ ...a, publishedAt: new Date().toISOString() }));
+
+    // ── 2. Intenta enriquecer con RSS real en paralelo ────────────────────────
     const [yahooArticles, finnhubArticles] = await Promise.all([
-      fetchYahooRss(symbol, 12, timeoutMs),
+      fetchYahooRss(symbol, 10, timeoutMs),
       fetchFinnhubArticles(symbol, 8, timeoutMs),
     ]);
 
-    // Deduplicar por titular
+    // Combina: RSS real primero (más actualizado), luego contexto base
     const seen = new Set<string>();
     const allRaw: RawArticle[] = [];
-    for (const a of [...yahooArticles, ...finnhubArticles]) {
+    for (const a of [...yahooArticles, ...finnhubArticles, ...contextBase]) {
       const key = a.headline.slice(0, 60).toLowerCase();
       if (!seen.has(key)) { seen.add(key); allRaw.push(a); }
-    }
-
-    // ── 2. Si Yahoo/Finnhub retornan vacío → usar artículos de contexto ─────
-    if (allRaw.length === 0) {
-      const contextArticles = (TICKER_CONTEXT[symbol] ?? genericFallback).map(a => ({ ...a, publishedAt: new Date().toISOString() }));
-      allRaw.push(...contextArticles);
     }
 
     // ── 3. Análisis de sentimiento ────────────────────────────────────────────
