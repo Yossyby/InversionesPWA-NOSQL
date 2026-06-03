@@ -12,9 +12,11 @@ import { ConfluenceSignalsTable } from "./ConfluenceSignalsTable";
 import { SimulationControlPanel } from "./simulation/SimulationControlPanel";
 import { SimulatorStrategySection } from "./simulation/SimulatorStrategySection";
 import { FundamentalAnalysisPanel } from "./FundamentalAnalysisPanel";
+import { NewsSection } from "./NewsSection";
 import type { CoverageModalParams } from "./simulation/CoverageParamsModal";
 import type { OptionStrategyAnalysis } from "./simulation/OptionStrategyParamsModal";
 import type { WheelModalParams } from "./simulation/WheelParamsModal";
+import type { SpreadModalParams } from "./simulation/SpreadParamsModal";
 import { TechnicalAnalysisExtendedSection } from "./TechnicalAnalysisExtendedSection";
 import { NewsSourcesAnalyzer, type NewsAnalysisResult } from "../news";
 import { AppShell } from "../../layouts/AppShell";
@@ -70,7 +72,7 @@ export function MainDashboard() {
   const [simulationMetrics, setSimulationMetrics] = useState<SignalMetrics | null>(null);
   const [institutionalCoreWasActive, setInstitutionalCoreWasActive] = useState(false);
   const [, setNewsDateRange] = useState<string | undefined>(undefined);
-  const [, setSpreadRequest] = useState<unknown>(null);
+  const [spreadRequest, setSpreadRequest] = useState<{ params: SpreadModalParams; kind: string } | null>(null);
   const [copilotOpen, setCopilotOpen] = useState(false);
   const [selectedStrikeData, setSelectedStrikeData] = useState<{
     strike: number; type: "call" | "put"; premium: number; iv: number;
@@ -176,6 +178,11 @@ export function MainDashboard() {
 
   const handleCoverageConfirmed = useCallback(
     (params: CoverageModalParams, kind: string) => setCoverageRequest({ params, kind }),
+    []
+  );
+
+  const handleSpreadConfirmed = useCallback(
+    (params: SpreadModalParams, kind: string) => setSpreadRequest({ params, kind }),
     []
   );
 
@@ -393,7 +400,7 @@ export function MainDashboard() {
               height: 420,
               padding: "var(--space-md)",
             }}>
-              <OptionChainTableConnected onSelectStrike={handleStrikeSelect} />
+              <OptionChainTableConnected onSelectStrike={handleStrikeSelect} activeStrategy={activeSimulationStrategy} />
             </div>
           </div>
 
@@ -415,6 +422,7 @@ export function MainDashboard() {
         onExecute={handleSimulationExecute}
         onStrategyChange={setActiveSimulationStrategy}
         onCoverageParamsConfirmed={handleCoverageConfirmed}
+        onSpreadParamsConfirmed={handleSpreadConfirmed}
         onOptionStrategyCalculated={handleOptionStrategyCalculated}
         onWheelParamsConfirmed={handleWheelConfirmed}
         onTermResult={handleTermResult}
@@ -633,6 +641,7 @@ export function MainDashboard() {
           ticker={selectedSymbol}
           activeStrategy={activeSimulationStrategy}
           coverageRequest={coverageRequest}
+          spreadRequest={spreadRequest}
           optionStrategyAnalysis={optionStrategyAnalysis}
           wheelSummary={wheelSummary}
           termResult={termResult}
@@ -647,7 +656,10 @@ export function MainDashboard() {
         autoRunKey={fundamentalAutoRunKey}
         onAnalysisComplete={setFundamentalAnalysis}
       />
-      {/* Bug 1: el módulo NO existe en el DOM hasta que la simulación se haya ejecutado */}
+      {/* NewsSection del equipo de Noticias (otro equipo — coexiste con Noticias 2) */}
+      <NewsSection symbol={selectedSymbol} />
+
+      {/* Bug 1: el módulo Noticias 2 NO existe en el DOM hasta que la simulación se haya ejecutado */}
       {noticias2Active && simulationHasRun && (
         <NewsSourcesAnalyzer
           selectedSymbol={selectedSymbol}
@@ -655,7 +667,6 @@ export function MainDashboard() {
           dateRange={noticias2DateRange}
           onResult={(r) => {
             setNoticias2Result(r);
-            // P5 — genera el prefill del input del chat (no lo abre ni envía automáticamente)
             const LABELS: Record<string, string> = { BUY: 'COMPRAR', SELL: 'VENDER', HOLD: 'ESPERAR' };
             const topPoint = r.keyPoints?.[0] ?? r.reasoning?.slice(0, 120) ?? 'análisis de noticias recientes';
             const prefill = `Las noticias recientes sugieren [${LABELS[r.verdict] ?? r.verdict}] ${r.company} ` +
@@ -663,10 +674,7 @@ export function MainDashboard() {
               `debido a: "${topPoint}". ¿Qué indicadores técnicos actuales respaldan o contradicen esta decisión?`;
             setNoticias2ChatContext(prefill);
           }}
-          onSendToChat={() => {
-            // Abre el chat con el prefill ya cargado en el input — el usuario presiona Enter
-            setCopilotOpen(true);
-          }}
+          onSendToChat={() => { setCopilotOpen(true); }}
         />
       )}
     </div>

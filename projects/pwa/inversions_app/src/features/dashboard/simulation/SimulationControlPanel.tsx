@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   BarChart2, BookOpen, TrendingUp, Building2, Newspaper,
-  Cpu, Play, ChevronDown, Calendar, RotateCcw,
+  Cpu, Play, ChevronDown, Calendar, RotateCcw, Loader2,
 } from "lucide-react";
 import { getMarketQuotes } from "../../../services/signals/marketApi";
 import {
@@ -22,6 +22,7 @@ import {
   type OptionStrategyAnalysis,
 } from "./OptionStrategyParamsModal";
 import { WheelParamsModal, type WheelModalParams } from "./WheelParamsModal";
+import { SpreadParamsModal, type SpreadModalParams } from "./SpreadParamsModal";
 import { ComplexStrategyParamsModal, type ComplexFormState } from "./ComplexStrategyParamsModal";
 import { executeStrategy } from "../../../services/strategies/strategyApi";
 import type { FromChainResponse } from "../../../services/strategies/strategyApi";
@@ -183,6 +184,8 @@ const PANEL_CSS = `
   .sim-exec:hover:not(:disabled) { background: var(--color-accent-hover); transform: translateY(-1px); }
   .sim-exec:active:not(:disabled) { transform: translateY(0); }
   .sim-exec:disabled { opacity: 0.6; cursor: not-allowed; }
+  .sim-exec__spinner { animation: sim-exec-spin 0.7s linear infinite; }
+  @keyframes sim-exec-spin { to { transform: rotate(360deg); } }
 `;
 
 // ─── Metadata ─────────────────────────────────────────────────────────────────
@@ -461,10 +464,12 @@ function ChipButton({
 // ─── Constants ─────────────────────────────────────────────────────────────────
 const TERM_STRATEGIES = new Set(["CALENDAR_SPREAD", "DIAGONAL_SPREAD"]);
 const CORE_OPTION_STRATEGIES = new Set<string>(["LONG_CALL", "LONG_PUT", "SHORT_CALL", "SHORT_PUT"]);
+const SPREAD_STRATEGIES = new Set(["BULL_CALL_SPREAD", "BEAR_PUT_SPREAD", "BULL_PUT_SPREAD", "BEAR_CALL_SPREAD"]);
 const COMPLEX_STRATEGIES = new Set(["IRON_CONDOR", "IRON_BUTTERFLY", "BUTTERFLY_SPREAD", "CONDOR"]);
 const COVERAGE_STRATEGIES = new Set(["PROTECTIVE_PUT", "MARRIED_PUT", "COLLAR_PUT", "COVERED_STRADDLE"]);
 function isTermStrategy(e: string)     { return TERM_STRATEGIES.has(e); }
 function isCoverageStrategy(e: string) { return COVERAGE_STRATEGIES.has(e); }
+function isSpreadStrategy(e: string)   { return SPREAD_STRATEGIES.has(e); }
 function isCoreOptionStrategy(e: string): e is CoreOptionStrategy { return CORE_OPTION_STRATEGIES.has(e); }
 function isWheelStrategy(e: string)    { return e === "WHEEL"; }
 function isComplexStrategy(e: string)  { return COMPLEX_STRATEGIES.has(e); }
@@ -487,6 +492,16 @@ const DEFAULT_COVERAGE_PARAMS: CoverageModalParams = {
   currentPrice: 0,
   shares: 100,
   riskTolerancePct: 0.05,
+};
+
+
+const DEFAULT_SPREAD_PARAMS: SpreadModalParams = {
+  currentPrice: 0,
+  longStrike: 0,
+  longPremium: 0,
+  shortStrike: 0,
+  shortPremium: 0,
+  contracts: 1,
 };
 
 const DEFAULT_WHEEL_PARAMS: WheelModalParams = {
@@ -515,25 +530,35 @@ const PRESET_OPTIONS: SelectOption[]    = PRESETS.map((p) => ({ value: p, label:
 const TIMEFRAME_OPTIONS: SelectOption[] = TIMEFRAMES.map((t) => ({ value: t, label: t }));
 const OPTION_STRATEGY_LABELS = new Map(OPTION_STRATEGY_OPTIONS.map((strategy) => [strategy.value, strategy.label]));
 const EMPTY_STRATEGY_OPTION: SelectOption = { value: "", label: "Seleccionar estrategia…" };
+const SPREAD_STRATEGY_OPTIONS: SelectOption[] = [
+  { value: "BULL_CALL_SPREAD", label: "Debit Spread · Bull Call" },
+  { value: "BEAR_PUT_SPREAD", label: "Debit Spread · Bear Put" },
+  { value: "BULL_PUT_SPREAD", label: "Credit Spread · Bull Put" },
+  { value: "BEAR_CALL_SPREAD", label: "Credit Spread · Bear Call" },
+];
+
 const STRATEGY_OPTIONS: SelectOption[] = [
   EMPTY_STRATEGY_OPTION,
-  ...CANONICAL_ESTRATEGIAS.map((strategy) => ({
-    value: strategy,
-    label: OPTION_STRATEGY_LABELS.get(strategy as CoreOptionStrategy) ?? strategy.replace(/_/g, " "),
-  })),
+  ...CANONICAL_ESTRATEGIAS
+    .filter((strategy) => !SPREAD_STRATEGIES.has(strategy))
+    .map((strategy) => ({
+      value: strategy,
+      label: OPTION_STRATEGY_LABELS.get(strategy as CoreOptionStrategy) ?? strategy.replace(/_/g, " "),
+    })),
+  ...SPREAD_STRATEGY_OPTIONS,
 ];
 
 function isoToday(): string       { return new Date().toISOString().slice(0, 10); }
 function isoPlusDays(n: number)   { return new Date(Date.now() + n * 86_400_000).toISOString().slice(0, 10); }
 
-// FIC: Initial core state — A_INDICADORES starts DISABLED by default at system start; the user
-// FIC: enables it manually. Other cores start enabled. This is purely the initial state: it is
-// FIC: never toggled off when the simulation runs (avoids turning it off by mistake). (EN)
-// FIC: Estado inicial de cores — A_INDICADORES arranca DESHABILITADO al iniciar el sistema; el
-// FIC: usuario lo activa a mano. Los demas cores arrancan activos. Es solo el estado inicial:
-// FIC: nunca se apaga al ejecutar la simulacion (evita apagarlo por error). (ES)
+// FIC: Initial core state — ALL cores start DISABLED at system start (like the technical indicators);
+// FIC: the user opts in to each core (Indicadores, Fundamental, Técnico, Institucional, Noticias, IA)
+// FIC: explicitly. Purely the initial/reset state. (EN)
+// FIC: Estado inicial de cores — TODOS los cores arrancan DESHABILITADOS al iniciar (igual que los
+// FIC: indicadores técnicos); el usuario activa cada core (Indicadores, Fundamental, Técnico,
+// FIC: Institucional, Noticias, IA) manualmente. Es solo el estado inicial/reset. (ES)
 const defaultCoresOn = (): Record<CoreId, boolean> =>
-  ALL_CORES.reduce((acc, c) => ({ ...acc, [c]: c !== "A_INDICADORES" }), {} as Record<CoreId, boolean>);
+  ALL_CORES.reduce((acc, c) => ({ ...acc, [c]: false }), {} as Record<CoreId, boolean>);
 
 // ─── Section label style (shared) ─────────────────────────────────────────────
 const sectionLabelStyle: React.CSSProperties = {
@@ -556,6 +581,7 @@ interface Props {
   onCoverageParamsConfirmed?: (params: CoverageModalParams, kind: string) => void;
   onOptionStrategyCalculated?: (analysis: OptionStrategyAnalysis) => void;
   onWheelParamsConfirmed?: (params: WheelModalParams) => void;
+  onSpreadParamsConfirmed?: (params: SpreadModalParams, kind: string) => void;
   onTermResult?: (data: any) => void;
   onComplexResult?: (result: FromChainResponse, strategy: string, timeframe?: string) => void;
   onNoticias2Change?: (active: boolean) => void;
@@ -570,6 +596,7 @@ export function SimulationControlPanel({
   onCoverageParamsConfirmed,
   onOptionStrategyCalculated,
   onWheelParamsConfirmed,
+  onSpreadParamsConfirmed,
   onTermResult,
   onComplexResult,
   onNoticias2Change,
@@ -586,9 +613,9 @@ export function SimulationControlPanel({
   const [noticias2On, setNoticias2On]     = useState<boolean>(false);
   // FIC: US-2 — technical indicator toggles live in the shared store so the chart ("arriba") and
   // FIC: this panel ("abajo") stay synchronized in both directions, including deactivation. (EN)
-  // FIC: US-2 — los toggles de indicadores viven en el store compartido para que el gráfico
-  // FIC: ("arriba") y este panel ("abajo") queden sincronizados en ambos sentidos, incluso al desactivar. (ES)
   const { indicators: indicadoresOn, toggleIndicator: toggleSub, setIndicator } = useIndicatorStore();
+  // FIC: Punto 3 — true once the user has run the simulation at least once; gates the auto-refresh. (EN)
+  const hasRunOnceRef = useRef(false);
   // FIC: US-8 — optional historical as-of date; empty means "use latest data". (EN)
   // FIC: US-8 — fecha historica opcional; vacio significa "usar datos mas recientes". (ES)
   const [fechaHistorica, setFechaHistorica] = useState<string>("");
@@ -601,7 +628,9 @@ export function SimulationControlPanel({
   const [optionParamsModalOpen, setOptionParamsModalOpen] = useState(false);
   const [optionParamsStrategy, setOptionParamsStrategy] = useState<CoreOptionStrategy>("LONG_CALL");
   const [wheelModalOpen, setWheelModalOpen] = useState(false);
+  const [spreadModalOpen, setSpreadModalOpen] = useState(false);
   const [complexModalOpen, setComplexModalOpen] = useState(false);
+  const [spreadParams, setSpreadParams] = useState<SpreadModalParams>(DEFAULT_SPREAD_PARAMS);
   const [complexParams, setComplexParams] = useState<ComplexFormState | null>(null);
   const [wheelParams, setWheelParams] = useState<WheelModalParams>({
     ...DEFAULT_WHEEL_PARAMS,
@@ -621,6 +650,16 @@ export function SimulationControlPanel({
       })
       .catch(() => { /* user can enter manually */ });
   }, [coverageModalOpen, ticket, coverageParams.currentPrice]);
+
+  useEffect(() => {
+    if (!spreadModalOpen || spreadParams.currentPrice > 0) return;
+    getMarketQuotes([ticket])
+      .then((data) => {
+        const q = data.quotes.find((qt) => qt.symbol === ticket.toUpperCase());
+        if (q && q.price > 0) setSpreadParams((prev) => ({ ...prev, currentPrice: q.price }));
+      })
+      .catch(() => { /* user can enter manually */ });
+  }, [spreadModalOpen, ticket, spreadParams.currentPrice]);
 
   useEffect(() => {
     if (!wheelModalOpen || wheelParams.csp.currentPrice > 0) return;
@@ -673,6 +712,8 @@ export function SimulationControlPanel({
       setCoverageModalOpen(true);
     } else if (isWheelStrategy(e)) {
       setWheelModalOpen(true);
+    } else if (isSpreadStrategy(e)) {
+      setSpreadModalOpen(true);
     } else if (isComplexStrategy(e)) {
       setComplexModalOpen(true);
     }
@@ -691,10 +732,12 @@ export function SimulationControlPanel({
     onStrategyChange?.("IRON_CONDOR");
     setTolerancia("MEDIO");
     setCoresOn(defaultCoresOn());
+    // FIC: Reset shared indicator toggles to OFF (keeps chart "arriba" in sync). (EN)
     ALL_SUBCORES.forEach((s) => setIndicator(s, false));
     setFechaHistorica("");
     setCoverageParams(DEFAULT_COVERAGE_PARAMS);
     setTermParams(DEFAULT_TERM_PARAMS);
+    setSpreadParams(DEFAULT_SPREAD_PARAMS);
     setError(null);
     // Oculta el card de Noticias 2 al limpiar el panel
     setNoticias2On(false);
@@ -706,6 +749,9 @@ export function SimulationControlPanel({
     setError(null);
     const activeCoreIds = ALL_CORES.filter((c) => coresOn[c]);
     onExecute?.(activeCoreIds);
+    // FIC: Mark that a manual run was initiated → enables auto-refresh on indicator toggles. (EN)
+    // FIC: Marca que se inició una corrida manual → habilita el auto-refresh al togglear indicadores. (ES)
+    hasRunOnceRef.current = true;
     try {
       const simPayload: SimulationRequestPayload = {
         ticket,
@@ -821,6 +867,40 @@ export function SimulationControlPanel({
       setLoading(false);
     }
   };
+
+  // FIC: Punto 3 — auto-refresh the confluence table when indicators are toggled (from the chart or
+  // FIC: this panel). Debounced; only after a manual run and with a valid (canonical) strategy, so we
+  // FIC: never hit the empty-strategy error nor spam the backend. Only refreshes the table (no modals
+  // FIC: nor strategy execution). (EN)
+  // FIC: Punto 3 — refresca la tabla de confluencia al togglear indicadores (desde el gráfico o este
+  // FIC: panel). Con debounce; solo tras una corrida manual y con estrategia válida (canónica), para no
+  // FIC: caer en el error de estrategia vacía ni spamear el backend. Solo refresca la tabla. (ES)
+  useEffect(() => {
+    if (!hasRunOnceRef.current) return;
+    if (!(CANONICAL_ESTRATEGIAS as readonly string[]).includes(estrategia)) return;
+    const id = setTimeout(async () => {
+      try {
+        const simPayload: SimulationRequestPayload = {
+          ticket,
+          rangoHistorico: preset,
+          rangoEstrategia: { from: estrategiaFrom, to: estrategiaTo },
+          temporalidad,
+          runtimeMode: "OFFLINE",
+          coresHabilitados: ALL_CORES.filter((c) => coresOn[c]),
+          indicadoresHabilitados: ALL_SUBCORES.filter((s) => indicadoresOn[s]),
+          estrategia,
+          toleranciaRiesgo: tolerancia,
+          soloCoincidencias: true,
+          ...(fechaHistorica ? { fechaHistorica } : {}),
+        };
+        onResult(await runSimulation(simPayload));
+      } catch {
+        // FIC: silent — the manual "Ejecutar Simulación" button surfaces any error. (EN)
+      }
+    }, 400);
+    return () => clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [indicadoresOn]);
 
   const periodDays = Math.max(
     0,
@@ -1063,7 +1143,9 @@ export function SimulationControlPanel({
                 background: "rgba(255,255,255,0.18)",
                 flexShrink: 0,
               }}>
-                <Play size={11} fill="currentColor" strokeWidth={0} />
+                {loading
+                  ? <Loader2 size={13} strokeWidth={2.5} className="sim-exec__spinner" />
+                  : <Play size={11} fill="currentColor" strokeWidth={0} />}
               </span>
               {loading ? "Ejecutando…" : "Ejecutar Simulación"}
             </button>
@@ -1104,6 +1186,15 @@ export function SimulationControlPanel({
         onChange={setWheelParams}
         onClose={() => setWheelModalOpen(false)}
         onConfirm={(params) => onWheelParamsConfirmed?.(params)}
+      />
+      <SpreadParamsModal
+        open={spreadModalOpen}
+        estrategia={estrategia}
+        ticker={ticket}
+        params={spreadParams}
+        onChange={setSpreadParams}
+        onClose={() => setSpreadModalOpen(false)}
+        onConfirm={(params) => onSpreadParamsConfirmed?.(params, estrategia)}
       />
       <ComplexStrategyParamsModal
         open={complexModalOpen}

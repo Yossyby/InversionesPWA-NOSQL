@@ -133,6 +133,7 @@ export interface DMIPoint {
 export function calcDMI(candles: OHLCVData[], period = 14): DMIPoint[] {
   if (candles.length <= period * 2) return [];
 
+  // Directional movement + true range per bar (from i=1).
   const plusDM: number[] = [];
   const minusDM: number[] = [];
   const tr: number[] = [];
@@ -147,15 +148,18 @@ export function calcDMI(candles: OHLCVData[], period = 14): DMIPoint[] {
     tr.push(Math.max(highLow, highClose, lowClose));
   }
 
+  // Wilder-smoothed sums seeded with the first `period` values.
   let smPlusDM = plusDM.slice(0, period).reduce((a, b) => a + b, 0);
   let smMinusDM = minusDM.slice(0, period).reduce((a, b) => a + b, 0);
   let smTR = tr.slice(0, period).reduce((a, b) => a + b, 0);
 
+  // Per-bar +DI/-DI and DX (tr[i] corresponds to candles[i+1]).
   const di: { time: string; plusDI: number; minusDI: number; dx: number }[] = [];
   for (let i = period; i < tr.length; i++) {
     smPlusDM = smPlusDM - smPlusDM / period + plusDM[i];
     smMinusDM = smMinusDM - smMinusDM / period + minusDM[i];
     smTR = smTR - smTR / period + tr[i];
+
     const plusDI = smTR === 0 ? 0 : (smPlusDM / smTR) * 100;
     const minusDI = smTR === 0 ? 0 : (smMinusDM / smTR) * 100;
     const diSum = plusDI + minusDI;
@@ -165,6 +169,7 @@ export function calcDMI(candles: OHLCVData[], period = 14): DMIPoint[] {
 
   if (di.length < period) return [];
 
+  // ADX = Wilder-smoothed average of DX, carrying the bar's +DI/-DI.
   const result: DMIPoint[] = [];
   let adx = di.slice(0, period).reduce((a, b) => a + b.dx, 0) / period;
   result.push({ time: di[period - 1].time, adx, plusDI: di[period - 1].plusDI, minusDI: di[period - 1].minusDI });
@@ -175,6 +180,8 @@ export function calcDMI(candles: OHLCVData[], period = 14): DMIPoint[] {
   return result;
 }
 
+// FIC: ADX line for the chart pane — derived from calcDMI (single source of truth). (EN)
+// FIC: Línea ADX para el panel del gráfico — derivada de calcDMI (fuente única de verdad). (ES)
 export function calcADX(candles: OHLCVData[], period = 14): { time: string; value: number }[] {
   return calcDMI(candles, period).map(d => ({ time: d.time, value: d.adx }));
 }

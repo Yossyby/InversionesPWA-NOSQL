@@ -99,7 +99,7 @@ export function buildComplexStrategyRows(
   const sharpe        = Number(simulation.ratio_sharpe ?? 0);
 
   const bePoints: number[] = Array.isArray(profile.break_even_points)
-    ? (profile.break_even_points as any[]).filter((bp) => bp != null && !isNaN(Number(bp))).map(Number)
+    ? (profile.break_even_points as (number | null)[]).filter((bp): bp is number => bp != null)
     : [];
 
   const estrategiaLabel = strategy.replace(/_/g, " ");
@@ -321,10 +321,10 @@ export function buildComplexStrategyRows(
   detailExplanation += `${briefSummary} `;
   detailExplanation += `Pérdida máx: $${perdidaMax.toLocaleString()} · Ganancia máx: $${gananciaMax.toLocaleString()}. `;
   detailExplanation += bePoints.length >= 2
-    ? `Rango BE: $${Number(bePoints[0]).toFixed(2)}–$${Number(bePoints[1]).toFixed(2)}.`
+    ? `Rango BE: $${bePoints[0].toFixed(2)}–$${bePoints[1].toFixed(2)}.`
     : "";
   if (probExito > 0) {
-    detailExplanation += ` Monte Carlo: ${Number(probExito).toFixed(1)}% prob. éxito, Sharpe ${Number(sharpe).toFixed(2)}, rend. esperado $${Number(rendEsp).toFixed(2)}.`;
+    detailExplanation += ` Monte Carlo: ${probExito.toFixed(1)}% prob. éxito, Sharpe ${sharpe.toFixed(2)}, rend. esperado $${rendEsp.toFixed(2)}.`;
   }
 
   const summaryRow: ConfluenceSignalRow = {
