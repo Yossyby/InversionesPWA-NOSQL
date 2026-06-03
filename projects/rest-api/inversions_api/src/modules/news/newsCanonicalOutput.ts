@@ -66,8 +66,8 @@ function aggregateTipoSenal(score: number): "CALL" | "PUT" | "HOLD" {
 }
 
 function canonicalize(row: Omit<NewsCanonicalRow, "canonicalOutput">): NewsCanonicalRow {
-  const canonicalOutput = buildCanonicalOutputString(row as CanonicalOutputRow);
-  return { ...row, canonicalOutput };
+  const canonicalOutput = buildCanonicalOutputString(row as unknown as CanonicalOutputRow);
+  return Object.assign({}, row, { canonicalOutput }) as NewsCanonicalRow;
 }
 
 function providerLabel(provider: string | null | undefined): string {

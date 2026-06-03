@@ -131,7 +131,7 @@ function mapAnalyzedArticle(article: AnalyzedNewsSource, ticker: string): Releva
     symbol: ticker,
     headline: article.title,
     summary: article.summary || article.rationale || null,
-    sentiment: toArchivedSentiment(article.sentiment),
+    sentiment: toArchivedSentiment(article.sentiment ?? "neutral"),
     relevanceScore,
     confidenceScore: confidence,
     credibilityScore: credibility,

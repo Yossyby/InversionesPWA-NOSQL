@@ -136,7 +136,51 @@ export interface AnalyzedNewsSource {
   credibilityScore: number;
   provider: string;
   publishedAt: string;
+  /** Sentimiento en formato textual (usado por relevant.ts). */
+  sentiment?: NewsSentiment;
+  /** Salida canónica en texto (inyectada por attachNewsCanonicalToSource). */
+  canonicalOutput?: string;
+  /** Campo opcional inyectado por newsCanonicalOutput cuando ya existe una fila canónica pre-calculada.
+   *  Se tipifica como any para no generar dependencia circular con ConfluenceSignalRow. */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  canonicalRow?: any;
 }
+
+// ─── Tipos canónicos del módulo de noticias (usados por newsCanonicalOutput) ──
+
+/** Fila canónica de noticias con salida en formato canonical-output-v1. */
+export interface NewsCanonicalRow {
+  core?: string;
+  subCore?: string;
+  ticket?: string;
+  tipoSenal: "CALL" | "PUT" | "HOLD";
+  score: number;
+  peso: number;
+  canonicalOutput: string;
+  observacion: {
+    objetivo: string;
+    senal: string;
+    explicacion: string;
+    metricas: Record<string, string | number>;
+  };
+  [key: string]: unknown;
+}
+
+/** Payload canónico agregado devuelto por buildNewsCanonicalPayloadFrom*. */
+export interface NewsCanonicalPayload {
+  version: string;
+  core: string;
+  symbol: string;
+  generatedAt: string;
+  standard: string;
+  aggregate: unknown;
+  rows: NewsCanonicalRow[];
+  output: string;
+  outputs: string[];
+}
+
+/** Sentimiento en formato textual usado por routes/news/relevant. */
+export type NewsSentiment = "positive" | "negative" | "neutral";
 
 // FIC: Aggregate response returned by evaluateNewsImpact.
 export interface NewsImpactResponse {
