@@ -28,6 +28,7 @@ import { executeStrategy } from "../../../services/strategies/strategyApi";
 import type { FromChainResponse } from "../../../services/strategies/strategyApi";
 import { useSignalStore } from "../../../store/signals";
 import { useIndicatorStore } from "../../../store/indicators";
+import { getLegsSnapshot, setLegsStrategy, useStrategyLegsStore } from "../../../store/strategyLegs";
 
 // ─── Panel CSS ─────────────────────────────────────────────────────────────────
 // Uses only real Revolut design-system tokens from tokens.css.
@@ -254,7 +255,7 @@ function Tooltip({ text, children }: { text: string; children: React.ReactNode }
   );
 }
 
-function FieldLabel({ label, children }: { label: string; children: React.ReactNode }) {
+function FieldLabel({ label, children }: { label: React.ReactNode; children: React.ReactNode }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "5px" }}>
       <span style={{
@@ -269,6 +270,51 @@ function FieldLabel({ label, children }: { label: string; children: React.ReactN
       </span>
       {children}
     </div>
+  );
+}
+
+// ─── Toggle switch ───────────────────────────────────────
+function ToggleSwitch({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label: string }) {
+  return (
+    <button
+      type="button"
+      onClick={() => onChange(!checked)}
+      title={label}
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: "5px",
+        background: "transparent",
+        border: "none",
+        cursor: "pointer",
+        padding: 0,
+        fontFamily: "var(--font-family)",
+        fontSize: "var(--font-size-xs)",
+        color: "var(--color-text-muted)",
+      }}
+    >
+      <span style={{
+        width: 32,
+        height: 16,
+        borderRadius: 8,
+        background: checked ? "var(--color-accent)" : "var(--color-border)",
+        position: "relative",
+        transition: "background var(--duration-fast) var(--easing-standard)",
+        flexShrink: 0,
+      }}>
+        <span style={{
+          position: "absolute",
+          top: 2,
+          left: checked ? 18 : 2,
+          width: 12,
+          height: 12,
+          borderRadius: "50%",
+          background: "#fff",
+          transition: "left var(--duration-fast) var(--easing-standard)",
+        }} />
+      </span>
+      {label}
+    </button>
   );
 }
 
@@ -474,6 +520,13 @@ function isCoreOptionStrategy(e: string): e is CoreOptionStrategy { return CORE_
 function isWheelStrategy(e: string)    { return e === "WHEEL"; }
 function isComplexStrategy(e: string)  { return COMPLEX_STRATEGIES.has(e); }
 
+const COMPLEX_BACKEND_TYPE: Record<string, string> = {
+  IRON_CONDOR: "iron_condor",
+  IRON_BUTTERFLY: "iron_butterfly",
+  BUTTERFLY_SPREAD: "butterfly_spread",
+  CONDOR: "condor",
+};
+
 const DEFAULT_TERM_PARAMS: TermStrategyParams = {
   optionStyle: "CALL",
   strikeShort: 0,
@@ -584,6 +637,8 @@ interface Props {
   onSpreadParamsConfirmed?: (params: SpreadModalParams, kind: string) => void;
   onTermResult?: (data: any) => void;
   onComplexResult?: (result: FromChainResponse, strategy: string, timeframe?: string) => void;
+  onManualModeChange?: (manual: boolean) => void;
+  onChainFocus?: () => void;
 }
 
 // ─── Main component ────────────────────────────────────────────────────────────
@@ -598,6 +653,8 @@ export function SimulationControlPanel({
   onSpreadParamsConfirmed,
   onTermResult,
   onComplexResult,
+  onManualModeChange,
+  onChainFocus,
 }: Props) {
   const incrementSimulationRunCount = useSignalStore().incrementSimulationRunCount;
   const [preset, setPreset]               = useState<Preset>("3M");
@@ -605,6 +662,7 @@ export function SimulationControlPanel({
   const [estrategiaTo, setEstrategiaTo]   = useState(isoPlusDays(30));
   const [temporalidad, setTemporalidad]   = useState<"1m" | "5m" | "15m" | "1h" | "4h" | "1d">("1h");
   const [estrategia, setEstrategia]       = useState("");
+  const [manualMode, setManualMode]       = useState(false);
   const [tolerancia, setTolerancia]       = useState<"BAJO" | "MEDIO" | "ALTO">("MEDIO");
   // FIC: A_INDICADORES core starts DISABLED at system start (initial state only). (EN)
   const [coresOn, setCoresOn]             = useState<Record<CoreId, boolean>>(defaultCoresOn);
@@ -632,6 +690,22 @@ export function SimulationControlPanel({
   const [complexModalOpen, setComplexModalOpen] = useState(false);
   const [spreadParams, setSpreadParams] = useState<SpreadModalParams>(DEFAULT_SPREAD_PARAMS);
   const [complexParams, setComplexParams] = useState<ComplexFormState | null>(null);
+  const [manualMetaOpen, setManualMetaOpen] = useState(false);
+  const [manualMeta, setManualMeta] = useState<{
+    contratos: number;
+    tipo_ala: string;
+    portfolio_valor: number;
+    portfolio_poder: number;
+    portfolio_margen: number;
+    portfolio_posiciones: number;
+  }>({
+    contratos: 1,
+    tipo_ala: "short",
+    portfolio_valor: 50000,
+    portfolio_poder: 25000,
+    portfolio_margen: 0,
+    portfolio_posiciones: 0,
+  });
   const [wheelParams, setWheelParams] = useState<WheelModalParams>({
     ...DEFAULT_WHEEL_PARAMS,
     csp: { ...DEFAULT_WHEEL_PARAMS.csp, ticker: ticket },
@@ -640,6 +714,26 @@ export function SimulationControlPanel({
   useEffect(() => {
     setWheelParams((prev) => ({ ...prev, csp: { ...prev.csp, ticker: ticket } }));
   }, [ticket]);
+
+  // FIC: Watch for all legs assigned in manual mode → open compact meta modal. (EN)
+  // FIC: Cuando todas las patas están asignadas en modo manual → abre modal compacto de metadatos. (ES)
+  const manualMetaDismissedRef = useRef(false);
+  const { strategy: legStrategy, legs: storeLegs } = useStrategyLegsStore();
+  const allLegsAssigned = manualMode
+    && legStrategy === estrategia
+    && isComplexStrategy(estrategia)
+    && storeLegs.length > 0
+    && storeLegs.every((l) => l.strike > 0);
+
+  useEffect(() => {
+    if (allLegsAssigned && !manualMetaOpen && !manualMetaDismissedRef.current) {
+      setManualMetaOpen(true);
+    }
+  }, [allLegsAssigned, manualMetaOpen]);
+
+  useEffect(() => {
+    manualMetaDismissedRef.current = false;
+  }, [estrategia, manualMode]);
 
   useEffect(() => {
     if (!coverageModalOpen || coverageParams.currentPrice > 0) return;
@@ -715,7 +809,12 @@ export function SimulationControlPanel({
     } else if (isSpreadStrategy(e)) {
       setSpreadModalOpen(true);
     } else if (isComplexStrategy(e)) {
-      setComplexModalOpen(true);
+      if (manualMode) {
+        setLegsStrategy(e);
+        onChainFocus?.();
+      } else {
+        setComplexModalOpen(true);
+      }
     }
   };
 
@@ -830,31 +929,48 @@ export function SimulationControlPanel({
         return;
       }
 
-      if (isComplexStrategy(estrategia) && complexParams) {
-        const complexPayload = {
-          strategy_type: complexParams.strategy_type,
-          ticker: ticket,
-          expiracion: complexParams.expiracion || undefined,
-          strikes: complexParams.strikes,
-          contratos: complexParams.contratos,
-          tipo_ala: complexParams.tipo_ala,
-          tolerancia_riesgo: tolerancia.toLowerCase(),
-          estilo_opcion: complexParams.estilo_opcion,
-          portfolio: {
-            valor_portafolio_usd: complexParams.portfolio_valor,
-            poder_compra_usd: complexParams.portfolio_poder,
-            margen_actual_usd: complexParams.portfolio_margen,
-            posiciones_actuales: complexParams.portfolio_posiciones,
-          },
-        };
-        const [simResult, complexRes] = await Promise.all([
-          runSimulation(simPayload),
-          executeStrategy(complexPayload),
-        ]);
-        onComplexResult?.(complexRes, estrategia, temporalidad);
-        onResult(simResult);
-        incrementSimulationRunCount();
-        return;
+      if (isComplexStrategy(estrategia)) {
+        const { strategy: legStrategy, legs: pendingLegs, expiracion: legExpiracion } = getLegsSnapshot();
+        const hasLegs = legStrategy === estrategia && pendingLegs.some((l) => l.strike > 0);
+
+        const effectiveStrikes = complexParams
+          ? complexParams.strikes
+          : hasLegs
+            ? pendingLegs.map((l) => ({ strike: l.strike, tipo: l.tipo, posicion: l.posicion }))
+            : [];
+
+        const effectiveBackend = complexParams
+          ? complexParams.strategy_type
+          : COMPLEX_BACKEND_TYPE[estrategia] ?? estrategia.toLowerCase();
+
+        const effectiveExpiration = complexParams?.expiracion || (hasLegs ? legExpiracion : undefined);
+
+        if (effectiveStrikes.length > 0 && effectiveStrikes.every((s) => s.strike > 0)) {
+          const complexPayload = {
+            strategy_type: effectiveBackend,
+            ticker: ticket,
+            expiracion: effectiveExpiration || undefined,
+            strikes: effectiveStrikes,
+            contratos: complexParams?.contratos ?? manualMeta.contratos,
+            tipo_ala: complexParams?.tipo_ala ?? manualMeta.tipo_ala,
+            tolerancia_riesgo: tolerancia.toLowerCase(),
+            estilo_opcion: complexParams?.estilo_opcion ?? "americana",
+            portfolio: {
+              valor_portafolio_usd: complexParams?.portfolio_valor ?? manualMeta.portfolio_valor,
+              poder_compra_usd: complexParams?.portfolio_poder ?? manualMeta.portfolio_poder,
+              margen_actual_usd: complexParams?.portfolio_margen ?? manualMeta.portfolio_margen,
+              posiciones_actuales: complexParams?.portfolio_posiciones ?? manualMeta.portfolio_posiciones,
+            },
+          };
+          const [simResult, complexRes] = await Promise.all([
+            runSimulation(simPayload),
+            executeStrategy(complexPayload),
+          ]);
+          onComplexResult?.(complexRes, estrategia, temporalidad);
+          onResult(simResult);
+          incrementSimulationRunCount();
+          return;
+        }
       }
 
       onResult(await runSimulation(simPayload));
@@ -981,7 +1097,16 @@ export function SimulationControlPanel({
               />
             </FieldLabel>
 
-            <FieldLabel label="Estrategia">
+            <FieldLabel label={
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <span>Estrategia</span>
+                <ToggleSwitch
+                  checked={manualMode}
+                  onChange={(v) => { setManualMode(v); onManualModeChange?.(v); }}
+                  label={manualMode ? "Manual" : "Auto"}
+                />
+              </div>
+            }>
               <CustomSelect
                 value={estrategia}
                 onChange={handleEstrategiaChange}
@@ -1188,12 +1313,212 @@ export function SimulationControlPanel({
         strategy={estrategia}
         ticker={ticket}
         riskTolerance={tolerancia.toLowerCase()}
+        autoFill={!manualMode}
         onClose={() => setComplexModalOpen(false)}
         onConfirm={(params, strat) => {
           setComplexParams(params);
           setComplexModalOpen(false);
         }}
       />
+
+      {/* ── Compact manual-mode meta modal ── */}
+      {manualMetaOpen && (
+        <div style={{
+          position: "fixed", inset: 0,
+          background: "rgba(0,0,0,0.72)",
+          zIndex: 1100,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          padding: "var(--space-lg) 0",
+        }}>
+          <div style={{
+            background: "var(--color-surface)",
+            borderRadius: "var(--radius-md)",
+            padding: "var(--space-lg)",
+            width: "min(400px, 96vw)",
+            border: "1px solid rgba(255,255,255,0.08)",
+            boxShadow: "0 24px 80px rgba(0,0,0,0.6)",
+            display: "flex",
+            flexDirection: "column",
+            gap: "var(--space-md)",
+          }}>
+            <span style={{ fontSize: "var(--font-size-sm)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--color-accent)" }}>
+              Parámetros de {estrategia.replace(/_/g, " ")}
+            </span>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-sm)" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-sm)" }}>
+                <div>
+                  <label style={{ fontSize: "var(--font-size-xs)", color: "var(--color-text-muted)", display: "block", marginBottom: "var(--space-xs)" }}>Contratos</label>
+                  <input
+                    type="number"
+                    min={1}
+                    style={{
+                      background: "var(--color-surface-raised)",
+                      border: "1px solid var(--color-border)",
+                      borderRadius: "var(--radius-sm)",
+                      color: "var(--color-text)",
+                      fontSize: "var(--font-size-sm)",
+                      padding: "var(--space-xs) var(--space-sm)",
+                      width: "100%",
+                      outline: "none",
+                      boxSizing: "border-box",
+                    }}
+                    value={manualMeta.contratos}
+                    onChange={(e) => setManualMeta((m) => ({ ...m, contratos: Math.max(1, parseInt(e.target.value) || 1) }))}
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: "var(--font-size-xs)", color: "var(--color-text-muted)", display: "block", marginBottom: "var(--space-xs)" }}>Tipo Ala</label>
+                  <select
+                    style={{
+                      background: "var(--color-surface-raised)",
+                      border: "1px solid var(--color-border)",
+                      borderRadius: "var(--radius-sm)",
+                      color: "var(--color-text)",
+                      fontSize: "var(--font-size-sm)",
+                      padding: "var(--space-xs) var(--space-sm)",
+                      width: "100%",
+                      outline: "none",
+                      boxSizing: "border-box",
+                    }}
+                    value={manualMeta.tipo_ala}
+                    onChange={(e) => setManualMeta((m) => ({ ...m, tipo_ala: e.target.value }))}
+                  >
+                    <option value="short">Short</option>
+                    <option value="wide">Wide</option>
+                    <option value="broken">Broken</option>
+                  </select>
+                </div>
+              </div>
+
+              <div style={{ background: "var(--color-surface-raised)", borderRadius: "var(--radius-sm)", padding: "var(--space-md)", border: "1px solid var(--color-border-subtle)", display: "flex", flexDirection: "column", gap: "var(--space-sm)" }}>
+                <span style={{ fontSize: "var(--font-size-xs)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--color-accent)" }}>Portfolio</span>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-sm)" }}>
+                  <div>
+                    <label style={{ fontSize: "var(--font-size-xs)", color: "var(--color-text-muted)", display: "block", marginBottom: "var(--space-xs)" }}>Valor (USD)</label>
+                    <input
+                      type="number"
+                      min={0}
+                      style={{
+                        background: "var(--color-surface)",
+                        border: "1px solid var(--color-border)",
+                        borderRadius: "var(--radius-sm)",
+                        color: "var(--color-text)",
+                        fontSize: "var(--font-size-sm)",
+                        padding: "var(--space-xs) var(--space-sm)",
+                        width: "100%",
+                        outline: "none",
+                        boxSizing: "border-box",
+                      }}
+                      value={manualMeta.portfolio_valor}
+                      onChange={(e) => setManualMeta((m) => ({ ...m, portfolio_valor: Math.max(0, parseInt(e.target.value) || 0) }))}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: "var(--font-size-xs)", color: "var(--color-text-muted)", display: "block", marginBottom: "var(--space-xs)" }}>Poder (USD)</label>
+                    <input
+                      type="number"
+                      min={0}
+                      style={{
+                        background: "var(--color-surface)",
+                        border: "1px solid var(--color-border)",
+                        borderRadius: "var(--radius-sm)",
+                        color: "var(--color-text)",
+                        fontSize: "var(--font-size-sm)",
+                        padding: "var(--space-xs) var(--space-sm)",
+                        width: "100%",
+                        outline: "none",
+                        boxSizing: "border-box",
+                      }}
+                      value={manualMeta.portfolio_poder}
+                      onChange={(e) => setManualMeta((m) => ({ ...m, portfolio_poder: Math.max(0, parseInt(e.target.value) || 0) }))}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: "var(--font-size-xs)", color: "var(--color-text-muted)", display: "block", marginBottom: "var(--space-xs)" }}>Margen (USD)</label>
+                    <input
+                      type="number"
+                      min={0}
+                      style={{
+                        background: "var(--color-surface)",
+                        border: "1px solid var(--color-border)",
+                        borderRadius: "var(--radius-sm)",
+                        color: "var(--color-text)",
+                        fontSize: "var(--font-size-sm)",
+                        padding: "var(--space-xs) var(--space-sm)",
+                        width: "100%",
+                        outline: "none",
+                        boxSizing: "border-box",
+                      }}
+                      value={manualMeta.portfolio_margen}
+                      onChange={(e) => setManualMeta((m) => ({ ...m, portfolio_margen: Math.max(0, parseInt(e.target.value) || 0) }))}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: "var(--font-size-xs)", color: "var(--color-text-muted)", display: "block", marginBottom: "var(--space-xs)" }}>Posiciones</label>
+                    <input
+                      type="number"
+                      min={0}
+                      style={{
+                        background: "var(--color-surface)",
+                        border: "1px solid var(--color-border)",
+                        borderRadius: "var(--radius-sm)",
+                        color: "var(--color-text)",
+                        fontSize: "var(--font-size-sm)",
+                        padding: "var(--space-xs) var(--space-sm)",
+                        width: "100%",
+                        outline: "none",
+                        boxSizing: "border-box",
+                      }}
+                      value={manualMeta.portfolio_posiciones}
+                      onChange={(e) => setManualMeta((m) => ({ ...m, portfolio_posiciones: Math.max(0, parseInt(e.target.value) || 0) }))}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: "var(--space-sm)" }}>
+              <button
+                type="button"
+                onClick={() => setManualMetaOpen(false)}
+                style={{
+                  padding: "8px 16px",
+                  background: "transparent",
+                  border: "1px solid var(--color-border)",
+                  borderRadius: "var(--radius-sm)",
+                  color: "var(--color-text-muted)",
+                  cursor: "pointer",
+                  fontSize: "var(--font-size-xs)",
+                  fontFamily: "var(--font-family)",
+                }}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  manualMetaDismissedRef.current = true;
+                  setManualMetaOpen(false);
+                }}
+                style={{
+                  padding: "8px 16px",
+                  background: "var(--color-accent)",
+                  border: "none",
+                  borderRadius: "var(--radius-sm)",
+                  color: "#fff",
+                  cursor: "pointer",
+                  fontSize: "var(--font-size-xs)",
+                  fontFamily: "var(--font-family)",
+                  fontWeight: 700,
+                }}
+              >
+                Listo
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

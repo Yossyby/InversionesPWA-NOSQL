@@ -76,6 +76,8 @@ export function MainDashboard() {
     expiration?: string; underlyingPrice?: number; estimatedRiskFreeRate?: number;
   } | null>(null);
   const [activeChartTab, setActiveChartTab] = useState<"chart" | "chain">("chart");
+  const [chainFocusKey, setChainFocusKey] = useState(0);
+  const chainRef = useRef<HTMLDivElement>(null);
 
   const { selectedInstrument, selectedStrike, runtimeMode, operationalMode, setSelectedStrike } = useSignalStore();
   const { setAnalysisCategory } = useAppShellStore();
@@ -355,13 +357,23 @@ export function MainDashboard() {
             </div>
 
             {/* Chain tab */}
-            <div style={{
+            <div ref={chainRef} style={{
               display: activeChartTab === "chain" ? "flex" : "none",
               flexDirection: "column",
               height: 420,
               padding: "var(--space-md)",
+              transition: "box-shadow 0.3s ease",
+              borderRadius: "var(--radius-sm)",
+              boxShadow: chainFocusKey > 0 && activeChartTab === "chain"
+                ? "0 0 0 2px var(--color-accent), 0 0 20px rgba(0,168,126,0.25)"
+                : undefined,
             }}>
-              <OptionChainTableConnected onSelectStrike={handleStrikeSelect} activeStrategy={activeSimulationStrategy} />
+              <OptionChainTableConnected
+                onSelectStrike={handleStrikeSelect}
+                activeStrategy={activeSimulationStrategy}
+                highlighted={chainFocusKey > 0}
+                focusKey={chainFocusKey}
+              />
             </div>
           </div>
 
@@ -388,6 +400,12 @@ export function MainDashboard() {
         onWheelParamsConfirmed={handleWheelConfirmed}
         onTermResult={handleTermResult}
         onComplexResult={handleComplexResult}
+        onManualModeChange={() => setChainFocusKey(0)}
+        onChainFocus={() => {
+          setActiveChartTab("chain");
+          setChainFocusKey((k) => k + 1);
+          setTimeout(() => chainRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" }), 100);
+        }}
       />
 
       {/* ── Strategy error (from buildComplexStrategyRows validation) */}
