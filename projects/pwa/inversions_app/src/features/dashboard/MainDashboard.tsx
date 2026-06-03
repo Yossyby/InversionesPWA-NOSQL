@@ -79,8 +79,11 @@ export function MainDashboard() {
     expiration?: string; underlyingPrice?: number; estimatedRiskFreeRate?: number;
   } | null>(null);
   const [activeChartTab, setActiveChartTab] = useState<"chart" | "chain">("chart");
+  const [chainFocusKey, setChainFocusKey] = useState(0);
+  const chainRef = useRef<HTMLDivElement>(null);
   const [watchlistSymbols, setWatchlistSymbols] = useState<string[]>([]);
   const [noticias2Active, setNoticias2Active] = useState(false);
+
   const [simulationHasRun, setSimulationHasRun] = useState(false);
   const [noticiasCoreWasActive, setNoticiasCoreWasActive] = useState(false);
   const [noticias2DateRange, setNoticias2DateRange] = useState<{ from?: string; to?: string } | undefined>();
@@ -396,13 +399,23 @@ export function MainDashboard() {
             </div>
 
             {/* Chain tab */}
-            <div style={{
+            <div ref={chainRef} style={{
               display: activeChartTab === "chain" ? "flex" : "none",
               flexDirection: "column",
               height: 420,
               padding: "var(--space-md)",
+              transition: "box-shadow 0.3s ease",
+              borderRadius: "var(--radius-sm)",
+              boxShadow: chainFocusKey > 0 && activeChartTab === "chain"
+                ? "0 0 0 2px var(--color-accent), 0 0 20px rgba(0,168,126,0.25)"
+                : undefined,
             }}>
-              <OptionChainTableConnected onSelectStrike={handleStrikeSelect} activeStrategy={activeSimulationStrategy} />
+              <OptionChainTableConnected
+                onSelectStrike={handleStrikeSelect}
+                activeStrategy={activeSimulationStrategy}
+                highlighted={chainFocusKey > 0}
+                focusKey={chainFocusKey}
+              />
             </div>
           </div>
 
@@ -430,6 +443,12 @@ export function MainDashboard() {
         onTermResult={handleTermResult}
         onClear={handleClearTable}
         onComplexResult={handleComplexResult}
+        onManualModeChange={() => setChainFocusKey(0)}
+        onChainFocus={() => {
+          setActiveChartTab("chain");
+          setChainFocusKey((k) => k + 1);
+          setTimeout(() => chainRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" }), 100);
+        }}
         onNoticias2Change={(v) => setNoticias2Active(v)}
       />
 
