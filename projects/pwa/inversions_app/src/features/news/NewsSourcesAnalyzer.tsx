@@ -1,6 +1,6 @@
 /**
- * src/features/news/NewsSourcesAnalyzer.tsx — Módulo Noticias 2
- * Análisis reactivo de sentimiento por ticker con fuentes predeterminadas.
+ * src/features/news/NewsSourcesAnalyzer.tsx — 006-noticias-2
+ * Módulo exclusivo Noticias 2: análisis reactivo de sentimiento por ticker.
  */
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
@@ -82,36 +82,36 @@ type FallbackArticle = { headline: string; source: string; snippet: string; url:
 const _ts = new Date().toISOString();
 const FRONTEND_CONTEXT: Record<string, FallbackArticle[]> = {
   NVDA: [
-    { headline: 'NVIDIA reports record AI data center revenue as H100/H200 demand surges', source: 'Market Analysis', snippet: 'NVIDIA continues to dominate AI infrastructure with strong data center revenue driven by enterprise and cloud demand.', url: '', publishedAt: _ts, score: 0.75, verdict: 'BUY' },
-    { headline: 'NVDA Blackwell GPU shipments accelerate Q2 2026 amid enterprise AI adoption', source: 'Market Analysis', snippet: 'The Blackwell architecture sees faster-than-expected adoption across major cloud providers.', url: '', publishedAt: _ts, score: 0.65, verdict: 'BUY' },
-    { headline: 'Analysts raise NVDA price targets following data center expansion announcements', source: 'Market Analysis', snippet: 'Multiple Wall Street firms updated NVIDIA price targets citing strong AI infrastructure spending.', url: '', publishedAt: _ts, score: 0.6, verdict: 'BUY' },
+    { headline: 'NVIDIA reports record AI data center revenue as H100/H200 demand surges', source: '006-Noticias2', snippet: 'NVIDIA continues to dominate AI infrastructure with strong data center revenue driven by enterprise and cloud demand.', url: '', publishedAt: _ts, score: 0.75, verdict: 'BUY' },
+    { headline: 'NVDA Blackwell GPU shipments accelerate Q2 2026 amid enterprise AI adoption', source: '006-Noticias2', snippet: 'The Blackwell architecture sees faster-than-expected adoption across major cloud providers.', url: '', publishedAt: _ts, score: 0.65, verdict: 'BUY' },
+    { headline: 'Analysts raise NVDA price targets following data center expansion announcements', source: '006-Noticias2', snippet: 'Multiple Wall Street firms updated NVIDIA price targets citing strong AI infrastructure spending.', url: '', publishedAt: _ts, score: 0.6, verdict: 'BUY' },
   ],
   AAPL: [
-    { headline: 'Apple launches AI-powered Siri 2.0 at WWDC 2026, co-developed with Google Gemini', source: 'Market Analysis', snippet: 'Apple unveiled a rebuilt Siri with deep AI integration targeting generative AI users.', url: '', publishedAt: _ts, score: 0.55, verdict: 'BUY' },
-    { headline: 'AAPL iPhone 17 pre-orders exceed analyst expectations on AI feature set', source: 'Market Analysis', snippet: 'Strong consumer interest in AI-native features is driving record pre-order numbers for the new iPhone.', url: '', publishedAt: _ts, score: 0.5, verdict: 'BUY' },
+    { headline: 'Apple launches AI-powered Siri 2.0 at WWDC 2026, co-developed with Google Gemini', source: '006-Noticias2', snippet: 'Apple unveiled a rebuilt Siri with deep AI integration targeting generative AI users.', url: '', publishedAt: _ts, score: 0.55, verdict: 'BUY' },
+    { headline: 'AAPL iPhone 17 pre-orders exceed analyst expectations on AI feature set', source: '006-Noticias2', snippet: 'Strong consumer interest in AI-native features is driving record pre-order numbers for the new iPhone.', url: '', publishedAt: _ts, score: 0.5, verdict: 'BUY' },
   ],
   SPY: [
-    { headline: 'S&P 500 hits new all-time high as tech sector leads gains amid AI optimism', source: 'Market Analysis', snippet: 'The index continued its strong run driven by technology stocks benefiting from AI infrastructure spending.', url: '', publishedAt: _ts, score: 0.4, verdict: 'HOLD' },
-    { headline: 'Fed holds rates steady — SPY gains on positive economic outlook', source: 'Market Analysis', snippet: 'The Federal Reserve decision to maintain current rates boosted investor confidence in equities.', url: '', publishedAt: _ts, score: 0.35, verdict: 'HOLD' },
+    { headline: 'S&P 500 hits new all-time high as tech sector leads gains amid AI optimism', source: '006-Noticias2', snippet: 'The index continued its strong run driven by technology stocks benefiting from AI infrastructure spending.', url: '', publishedAt: _ts, score: 0.4, verdict: 'HOLD' },
+    { headline: 'Fed holds rates steady — SPY gains on positive economic outlook', source: '006-Noticias2', snippet: 'The Federal Reserve decision to maintain current rates boosted investor confidence in equities.', url: '', publishedAt: _ts, score: 0.35, verdict: 'HOLD' },
   ],
   MSFT: [
-    { headline: 'Microsoft Azure AI revenue surges 45% YoY as Copilot adoption accelerates', source: 'Market Analysis', snippet: 'Microsoft reported strong cloud growth driven by AI services embedded across its product suite.', url: '', publishedAt: _ts, score: 0.7, verdict: 'BUY' },
+    { headline: 'Microsoft Azure AI revenue surges 45% YoY as Copilot adoption accelerates', source: '006-Noticias2', snippet: 'Microsoft reported strong cloud growth driven by AI services embedded across its product suite.', url: '', publishedAt: _ts, score: 0.7, verdict: 'BUY' },
   ],
   TSLA: [
-    { headline: 'Tesla Cybertruck deliveries ramp up; Full Self-Driving version 13 released', source: 'Market Analysis', snippet: 'Tesla accelerated Cybertruck production and released a major FSD update targeting full autonomy.', url: '', publishedAt: _ts, score: 0.45, verdict: 'HOLD' },
+    { headline: 'Tesla Cybertruck deliveries ramp up; Full Self-Driving version 13 released', source: '006-Noticias2', snippet: 'Tesla accelerated Cybertruck production and released a major FSD update targeting full autonomy.', url: '', publishedAt: _ts, score: 0.45, verdict: 'HOLD' },
   ],
   GOOGL: [
-    { headline: 'Alphabet Google AI Overviews reaches 1.5B users, search revenue accelerates', source: 'Market Analysis', snippet: 'Google AI integration into search is showing strong monetization signals ahead of earnings.', url: '', publishedAt: _ts, score: 0.6, verdict: 'BUY' },
+    { headline: 'Alphabet Google AI Overviews reaches 1.5B users, search revenue accelerates', source: '006-Noticias2', snippet: 'Google AI integration into search is showing strong monetization signals ahead of earnings.', url: '', publishedAt: _ts, score: 0.6, verdict: 'BUY' },
   ],
   AMZN: [
-    { headline: 'Amazon AWS revenue beats estimates on strong AI and enterprise cloud demand', source: 'Market Analysis', snippet: 'AWS continues to grow faster than expected as AI workloads drive enterprise cloud adoption.', url: '', publishedAt: _ts, score: 0.65, verdict: 'BUY' },
+    { headline: 'Amazon AWS revenue beats estimates on strong AI and enterprise cloud demand', source: '006-Noticias2', snippet: 'AWS continues to grow faster than expected as AI workloads drive enterprise cloud adoption.', url: '', publishedAt: _ts, score: 0.65, verdict: 'BUY' },
   ],
   META: [
-    { headline: 'Meta AI assistant reaches 700M monthly users, ad revenue accelerates', source: 'Market Analysis', snippet: 'Meta Platforms reports strong AI-driven engagement metrics and improved advertising ROI.', url: '', publishedAt: _ts, score: 0.58, verdict: 'BUY' },
+    { headline: 'Meta AI assistant reaches 700M monthly users, ad revenue accelerates', source: '006-Noticias2', snippet: 'Meta Platforms reports strong AI-driven engagement metrics and improved advertising ROI.', url: '', publishedAt: _ts, score: 0.58, verdict: 'BUY' },
   ],
   DEFAULT: (sym: string): FallbackArticle[] => [
-    { headline: `${sym} institutional investors increase positions amid sector momentum`, source: 'Market Analysis', snippet: `Institutional buying activity for ${sym} increased according to recent 13F filings.`, url: '', publishedAt: _ts, score: 0.3, verdict: 'HOLD' },
-    { headline: `${sym} technical analysis: key support levels hold as volume trends positive`, source: 'Market Analysis', snippet: `${sym} maintained critical support levels with increasing volume suggesting accumulation.`, url: '', publishedAt: _ts, score: 0.25, verdict: 'HOLD' },
+    { headline: `${sym} institutional investors increase positions amid sector momentum`, source: '006-Noticias2', snippet: `Institutional buying activity for ${sym} increased according to recent 13F filings.`, url: '', publishedAt: _ts, score: 0.3, verdict: 'HOLD' },
+    { headline: `${sym} technical analysis: key support levels hold as volume trends positive`, source: '006-Noticias2', snippet: `${sym} maintained critical support levels with increasing volume suggesting accumulation.`, url: '', publishedAt: _ts, score: 0.25, verdict: 'HOLD' },
   ],
 } as any;
 
@@ -297,7 +297,7 @@ export const NewsSourcesAnalyzer: React.FC<NewsSourcesAnalyzerProps> = ({
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--color-accent)' }}>
-              NOTICIAS 2
+              006 · NOTICIAS 2
             </span>
             <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>·</span>
             <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>

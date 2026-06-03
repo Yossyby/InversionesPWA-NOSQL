@@ -1,4 +1,4 @@
-// src/routes/news/urlAnalysis.ts
+// src/routes/news/urlAnalysis.ts — 006-noticias-2
 // FIC: Endpoint exclusivo de Noticias 2 — pipeline INDEPENDIENTE del módulo de Noticias 1.
 // FIC: Fetch directo a Yahoo Finance RSS + Finnhub (si hay key) sin filtros de relevancia.
 // FIC: Esto evita que los filtros isRelevantToSymbol de fetchNewsData eliminen artículos válidos.
