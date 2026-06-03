@@ -312,15 +312,12 @@ export function ComplexStrategyParamsModal({ open, strategy, ticker, riskToleran
     }
   }, [strategy]);
 
-  // Auto-fetch options chain when modal opens with a valid ticker and expiration
-  // FIC: Skip the auto-adjust when the user pre-selected legs from the chain (Punto 1). (EN)
-  useEffect(() => {
-    if (open && ticker && ticker.length >= 2 && !hasPendingLegs) {
-      handleAutoAdjustStrikes(ticker, form.expiracion || undefined);
-    }
-    // Only run on open, not on every form.expiracion change
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, ticker]);
+  // FIC: Strikes are manually editable from the moment the modal opens — we do NOT auto-fetch them
+  // FIC: from the chain on open. The user can type them, press "Ajustar" to pull from the chain on
+  // FIC: demand, or pre-fill via right-click on the chain (Punto 1). (EN)
+  // FIC: Los strikes son editables a mano desde que abre el modal — NO se auto-traen de la cadena al
+  // FIC: abrir. El usuario los teclea, usa "Ajustar" para traerlos a demanda, o los precarga con clic
+  // FIC: derecho en la cadena (Punto 1). (ES)
 
   // FIC: Punto 1 — when the modal opens with legs picked from the chain, use them as the strikes. (EN)
   // FIC: Punto 1 — al abrir el modal con patas elegidas desde la cadena, úsalas como strikes. (ES)

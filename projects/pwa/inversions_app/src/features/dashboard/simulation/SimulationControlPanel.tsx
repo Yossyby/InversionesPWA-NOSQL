@@ -551,14 +551,14 @@ const STRATEGY_OPTIONS: SelectOption[] = [
 function isoToday(): string       { return new Date().toISOString().slice(0, 10); }
 function isoPlusDays(n: number)   { return new Date(Date.now() + n * 86_400_000).toISOString().slice(0, 10); }
 
-// FIC: Initial core state — A_INDICADORES starts DISABLED by default at system start; the user
-// FIC: enables it manually. Other cores start enabled. This is purely the initial state: it is
-// FIC: never toggled off when the simulation runs (avoids turning it off by mistake). (EN)
-// FIC: Estado inicial de cores — A_INDICADORES arranca DESHABILITADO al iniciar el sistema; el
-// FIC: usuario lo activa a mano. Los demas cores arrancan activos. Es solo el estado inicial:
-// FIC: nunca se apaga al ejecutar la simulacion (evita apagarlo por error). (ES)
+// FIC: Initial core state — ALL cores start DISABLED at system start (like the technical indicators);
+// FIC: the user opts in to each core (Indicadores, Fundamental, Técnico, Institucional, Noticias, IA)
+// FIC: explicitly. Purely the initial/reset state. (EN)
+// FIC: Estado inicial de cores — TODOS los cores arrancan DESHABILITADOS al iniciar (igual que los
+// FIC: indicadores técnicos); el usuario activa cada core (Indicadores, Fundamental, Técnico,
+// FIC: Institucional, Noticias, IA) manualmente. Es solo el estado inicial/reset. (ES)
 const defaultCoresOn = (): Record<CoreId, boolean> =>
-  ALL_CORES.reduce((acc, c) => ({ ...acc, [c]: c !== "A_INDICADORES" }), {} as Record<CoreId, boolean>);
+  ALL_CORES.reduce((acc, c) => ({ ...acc, [c]: false }), {} as Record<CoreId, boolean>);
 
 // ─── Section label style (shared) ─────────────────────────────────────────────
 const sectionLabelStyle: React.CSSProperties = {
