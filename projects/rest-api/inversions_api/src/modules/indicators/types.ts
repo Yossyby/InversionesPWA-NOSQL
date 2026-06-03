@@ -206,7 +206,7 @@ export interface SimulationRequest {
   runtimeMode: "ONLINE" | "OFFLINE";
   coresHabilitados: CoreId[];
   indicadoresHabilitados: SubCoreIndicador[];
-  estrategia: string; // "IRON_CONDOR" | ... — lista canonica abierta (T111)
+  estrategia?: string; // "IRON_CONDOR" | ... — lista canonica abierta (T111); opcional cuando no se selecciona estrategia
   toleranciaRiesgo: "BAJO" | "MEDIO" | "ALTO";
   // FIC: Optional historical "as-of" date (ISO yyyy-mm-dd). When set, the core truncates the
   // FIC: candle series at end-of-day of this date and computes the signal AS IF it were that day,

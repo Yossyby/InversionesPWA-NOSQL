@@ -636,9 +636,11 @@ interface Props {
   onWheelParamsConfirmed?: (params: WheelModalParams) => void;
   onSpreadParamsConfirmed?: (params: SpreadModalParams, kind: string) => void;
   onTermResult?: (data: any) => void;
+  onClear?: () => void;
   onComplexResult?: (result: FromChainResponse, strategy: string, timeframe?: string) => void;
   onManualModeChange?: (manual: boolean) => void;
   onChainFocus?: () => void;
+  onNoticias2Change?: (active: boolean) => void;
 }
 
 // ─── Main component ────────────────────────────────────────────────────────────
@@ -652,9 +654,11 @@ export function SimulationControlPanel({
   onWheelParamsConfirmed,
   onSpreadParamsConfirmed,
   onTermResult,
+  onClear,
   onComplexResult,
   onManualModeChange,
   onChainFocus,
+  onNoticias2Change,
 }: Props) {
   const incrementSimulationRunCount = useSignalStore().incrementSimulationRunCount;
   const [preset, setPreset]               = useState<Preset>("3M");
@@ -666,13 +670,11 @@ export function SimulationControlPanel({
   const [tolerancia, setTolerancia]       = useState<"BAJO" | "MEDIO" | "ALTO">("MEDIO");
   // FIC: A_INDICADORES core starts DISABLED at system start (initial state only). (EN)
   const [coresOn, setCoresOn]             = useState<Record<CoreId, boolean>>(defaultCoresOn);
+  const [noticias2On, setNoticias2On]     = useState<boolean>(false);
   // FIC: US-2 — technical indicator toggles live in the shared store so the chart ("arriba") and
   // FIC: this panel ("abajo") stay synchronized in both directions, including deactivation. (EN)
-  // FIC: US-2 — los toggles de indicadores viven en el store compartido para que el gráfico
-  // FIC: ("arriba") y este panel ("abajo") queden sincronizados en ambos sentidos, incluso al desactivar. (ES)
   const { indicators: indicadoresOn, toggleIndicator: toggleSub, setIndicator } = useIndicatorStore();
   // FIC: Punto 3 — true once the user has run the simulation at least once; gates the auto-refresh. (EN)
-  // FIC: Punto 3 — true cuando el usuario ya corrió la simulación al menos una vez; habilita el auto-refresh. (ES)
   const hasRunOnceRef = useRef(false);
   // FIC: US-8 — optional historical as-of date; empty means "use latest data". (EN)
   // FIC: US-8 — fecha historica opcional; vacio significa "usar datos mas recientes". (ES)
@@ -818,7 +820,17 @@ export function SimulationControlPanel({
     }
   };
 
-  const toggleCore = (c: CoreId)          => setCoresOn((p) => ({ ...p, [c]: !p[c] }));
+  const toggleCore = (c: CoreId) => {
+    setCoresOn((p) => {
+      const next = { ...p, [c]: !p[c] };
+      // Mutex: si A_NOTICIAS se activa, desactiva Noticias 2 automáticamente
+      if (c === "A_NOTICIAS" && next["A_NOTICIAS"]) {
+        setNoticias2On(false);
+        onNoticias2Change?.(false);
+      }
+      return next;
+    });
+  };
 
   // FIC: US-3 — full control-panel reset to defaults (also clears any prior results). (EN)
   // FIC: US-3 — reset completo del panel de control a defaults (limpia tambien resultados previos). (ES)
@@ -832,13 +844,15 @@ export function SimulationControlPanel({
     setTolerancia("MEDIO");
     setCoresOn(defaultCoresOn());
     // FIC: Reset shared indicator toggles to OFF (keeps chart "arriba" in sync). (EN)
-    // FIC: Restablece los toggles compartidos de indicadores a OFF (mantiene sincronía con el gráfico "arriba"). (ES)
     ALL_SUBCORES.forEach((s) => setIndicator(s, false));
     setFechaHistorica("");
     setCoverageParams(DEFAULT_COVERAGE_PARAMS);
     setTermParams(DEFAULT_TERM_PARAMS);
     setSpreadParams(DEFAULT_SPREAD_PARAMS);
     setError(null);
+    // Oculta el card de Noticias 2 al limpiar el panel
+    setNoticias2On(false);
+    onNoticias2Change?.(false);
   };
 
   const run = async () => {
@@ -1151,6 +1165,21 @@ export function SimulationControlPanel({
                   />
                 );
               })}
+              {/* Noticias 2 — mutex con A_NOTICIAS: solo uno activo a la vez */}
+              <ChipButton
+                active={noticias2On}
+                onClick={() => {
+                  const next = !noticias2On;
+                  setNoticias2On(next);
+                  onNoticias2Change?.(next);
+                  // Si se activa Noticias 2, desactiva A_NOTICIAS automáticamente
+                  if (next && coresOn["A_NOTICIAS"]) {
+                    setCoresOn((p) => ({ ...p, A_NOTICIAS: false }));
+                  }
+                }}
+                label="Noticias 2"
+                tooltip="Análisis de fuentes de noticias personalizadas (TEAM-02). Mutuamente exclusivo con Noticias."
+              />
             </div>
           </div>
 
