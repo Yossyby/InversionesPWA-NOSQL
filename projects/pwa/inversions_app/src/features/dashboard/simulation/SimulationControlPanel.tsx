@@ -671,7 +671,7 @@ export function SimulationControlPanel({
   const [tolerancia, setTolerancia]       = useState<"BAJO" | "MEDIO" | "ALTO">("MEDIO");
   // FIC: A_INDICADORES core starts DISABLED at system start (initial state only). (EN)
   const [coresOn, setCoresOn]             = useState<Record<CoreId, boolean>>(defaultCoresOn);
-  const [noticias2On, setNoticias2On]     = useState<boolean>(false);
+  // noticias2On eliminado — A_NOTICIAS_2 usa coresOn["A_NOTICIAS_2"] como fuente de verdad
   // FIC: US-2 — technical indicator toggles live in the shared store so the chart ("arriba") and
   // FIC: this panel ("abajo") stay synchronized in both directions, including deactivation. (EN)
   const { indicators: indicadoresOn, toggleIndicator: toggleSub, setIndicator } = useIndicatorStore();
@@ -824,11 +824,20 @@ export function SimulationControlPanel({
   const toggleCore = (c: CoreId) => {
     setCoresOn((p) => {
       const next = { ...p, [c]: !p[c] };
-      // Mutex: si A_NOTICIAS se activa, desactiva Noticias 2 automáticamente
+
+      // Cuando A_NOTICIAS_2 cambia → notifica al Dashboard para mostrar/ocultar la tarjeta
+      if (c === "A_NOTICIAS_2") {
+        onNoticias2Change?.(next["A_NOTICIAS_2"]);
+        // Mutex: si activamos Noticias 2, desactivamos A_NOTICIAS
+        if (next["A_NOTICIAS_2"]) next["A_NOTICIAS"] = false;
+      }
+
+      // Mutex inverso: si activamos A_NOTICIAS, desactivamos Noticias 2
       if (c === "A_NOTICIAS" && next["A_NOTICIAS"]) {
-        setNoticias2On(false);
+        next["A_NOTICIAS_2"] = false;
         onNoticias2Change?.(false);
       }
+
       return next;
     });
   };
@@ -852,7 +861,6 @@ export function SimulationControlPanel({
     setSpreadParams(DEFAULT_SPREAD_PARAMS);
     setError(null);
     // Oculta el card de Noticias 2 al limpiar el panel
-    setNoticias2On(false);
     onNoticias2Change?.(false);
   };
 
@@ -1166,21 +1174,7 @@ export function SimulationControlPanel({
                   />
                 );
               })}
-              {/* Noticias 2 — mutex con A_NOTICIAS: solo uno activo a la vez */}
-              <ChipButton
-                active={noticias2On}
-                onClick={() => {
-                  const next = !noticias2On;
-                  setNoticias2On(next);
-                  onNoticias2Change?.(next);
-                  // Si se activa Noticias 2, desactiva A_NOTICIAS automáticamente
-                  if (next && coresOn["A_NOTICIAS"]) {
-                    setCoresOn((p) => ({ ...p, A_NOTICIAS: false }));
-                  }
-                }}
-                label="Noticias 2"
-                tooltip="Análisis de fuentes de noticias personalizadas (TEAM-02). Mutuamente exclusivo con Noticias."
-              />
+              {/* A_NOTICIAS_2 ya se renderiza en el loop ALL_CORES con CORE_META */}
             </div>
           </div>
 
