@@ -1,10 +1,7 @@
 /**
  * src/features/news/index.ts
- * FIC: Barril de exportación para el módulo de noticias
+ * Noticias 2: flujo original TNMT separado de Noticias 1 / A_NOTICIAS.
  */
 
 export { NewsSourcesAnalyzer } from './NewsSourcesAnalyzer';
-export type { NewsAnalysisResult, NewsSourcesAnalyzerProps } from './NewsSourcesAnalyzer';
-export { SourceInput } from './SourceInput';
-export { SourceList } from './SourceList';
-export { AnalysisResult } from './AnalysisResult';
+export type { NewsAnalysisResult } from './NewsSourcesAnalyzer';
