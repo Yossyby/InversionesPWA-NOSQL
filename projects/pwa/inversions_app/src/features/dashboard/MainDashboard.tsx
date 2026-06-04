@@ -255,8 +255,11 @@ export function MainDashboard() {
   const handleSimulationExecute = useCallback((activeCoreIds: CoreId[]) => {
     const institutionalActive = activeCoreIds.includes("A_INSTITUCIONAL");
     setInstitutionalCoreWasActive(institutionalActive);
-    // Registra si A_NOTICIAS y Noticias2 estaban activos al ejecutar la simulación
     setNoticiasCoreWasActive(activeCoreIds.includes("A_NOTICIAS"));
+    // Re-sincroniza noticias2Active desde el estado real del chip al momento de simular.
+    // Necesario porque el ticker-change resetea noticias2Active a false, pero el chip
+    // en SimulationControlPanel puede seguir ON. activeCoreIds es la fuente de verdad.
+    setNoticias2Active(activeCoreIds.includes("A_NOTICIAS_2"));
 
     if (activeCoreIds.includes("A_FUNDAMENTAL")) {
       setFundamentalAutoRunKey((key) => key + 1);
