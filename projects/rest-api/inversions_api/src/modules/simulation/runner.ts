@@ -6,7 +6,6 @@ import { buildIndicatorsTable } from "../indicators/confluenceTable";
 import { buildCoreStubs } from "../indicators/coreStubs";
 import { getCandles, intervalMs, isSupportedTimeframe } from "../indicators/ohlcSource";
 import { buildNewsConfluenceRows } from "../news/newsConfluenceRows";
-import { buildNoticias2ConfluenceRows } from "../news/noticias2ConfluenceRows";
 import {
   ALGORITHM_VERSION,
   ALL_CORE_IDS,
@@ -339,18 +338,11 @@ export async function runSimulation(
       })
     : [];
 
-  // FIC: 006-noticias-2 — Core A_NOTICIAS_2: pipeline independiente con RSS directo + fallback contextual. (EN)
-  // FIC: Genera ConfluenceSignalRow[] canónicos siguiendo el mismo contrato Diana que A_NOTICIAS. (ES)
-  const noticias2Rows = enabledCores.has("A_NOTICIAS_2")
-    ? await buildNoticias2ConfluenceRows({
-        ticket:          request.ticket,
-        timeframe:       request.temporalidad,
-        precio:          candles[candles.length - 1]?.close ?? candles[candles.length - 1]?.open ?? 0,
-        sourceInputHash: verdict.source_input_hash,
-        previousRows:    deps.previousRows,
-        now:             computedAt,
-      }).catch(() => [] as ConfluenceSignalRow[])
-    : [];
+  // FIC: 006-noticias-2 — A_NOTICIAS_2 NO se genera en el runner. (EN)
+  // FIC: Sus filas se inyectan desde el frontend ÚNICAMENTE cuando el usuario
+  // FIC: presiona "Analizar" en la tarjeta de Noticias 2, no al ejecutar la simulación.
+  // FIC: Esto desacopla el fetch RSS del pipeline de simulación. (ES)
+  const noticias2Rows: ConfluenceSignalRow[] = [];
 
   // FIC: Execute AI Core if enabled — Noticias 2 feeds into AI precalculated context. (EN)
   let aiRow: ConfluenceSignalRow | null = null;
@@ -361,7 +353,7 @@ export async function runSimulation(
       sourceInputHash: verdict.source_input_hash,
       computedAt: computedAt,
       previousRows: deps.previousRows,
-      precalculatedRows: [...table, ...institutionalRows, ...tecnicoRows, ...noticiasRows, ...noticias2Rows],
+      precalculatedRows: [...table, ...institutionalRows, ...tecnicoRows, ...noticiasRows],
     });
   }
 
@@ -373,7 +365,7 @@ export async function runSimulation(
       if (c === "A_TECNICO" && tecnicoRows.length > 0) return false;
       if (c === "A_IA" && aiRow !== null) return false;
       if (c === "A_NOTICIAS" && noticiasRows.length > 0) return false;
-      if (c === "A_NOTICIAS_2" && noticias2Rows.length > 0) return false;
+      if (c === "A_NOTICIAS_2") return false; // Sus filas vienen del frontend al presionar "Analizar"
       return enabledCores.has(c);
     });
 
